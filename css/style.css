@@ -302,6 +302,29 @@ img.px, .npc-img { image-rendering: pixelated; }
 .qte-fill { width: 100%; height: 100%; background: var(--red); transition: width 1.5s linear; box-shadow: 0 0 10px var(--red); }
 @keyframes qteShake { 0%,100% { transform: translate(0,0);} 25% { transform: translate(-2px,1px);} 75% { transform: translate(2px,-1px);} }
 
+/* ============ キャラのループアニメーション ============ */
+/* 呼吸アイドル：わずかに上下＋伸縮（ドット絵の生存感） */
+.anim-idle img.px, .anim-idle .npc-img { animation: idleBreath 3.2s ease-in-out infinite; transform-origin: bottom center; }
+@keyframes idleBreath {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.015) translateY(-1px); }
+}
+/* タバコの煙：キャラ頭上をゆっくり立ちのぼる */
+.smoke { position: absolute; left: 62%; top: 12%; pointer-events: none; }
+.smoke .puff {
+  position: absolute; left: 0; bottom: 0;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(200, 205, 220, .35);
+  filter: blur(1px);
+  animation: puffRise 4.2s ease-out infinite;
+  opacity: 0;
+}
+@keyframes puffRise {
+  0% { transform: translate(0, 0) scale(.5); opacity: 0; }
+  12% { opacity: .55; }
+  100% { transform: translate(8px, -6vh) scale(2.4); opacity: 0; }
+}
+
 /* ============ バトル ============ */
 #battle-layer { position: absolute; inset: 0; z-index: 250; display: none; }
 #battle-layer.active { display: block; }
@@ -311,9 +334,58 @@ img.px, .npc-img { image-rendering: pixelated; }
   width: 60%; padding: 1.2vh 2vh;
 }
 .bt-boss-name { color: var(--red); letter-spacing: .3em; font-size: clamp(12px, 2.2vh, 19px); text-shadow: 0 0 8px var(--red); margin-bottom: .6vh; text-align: center; }
+/* ---- 敵グラフィック ---- */
+.bt-enemy {
+  position: absolute; top: 14%; left: 50%; transform: translateX(-50%);
+  height: 42%; z-index: 5; pointer-events: none;
+}
+.bt-enemy-img { height: 100%; filter: drop-shadow(0 0 24px rgba(255,43,74,.45)) drop-shadow(0 8px 12px rgba(0,0,0,.8)); }
+.anim-float { animation: enemyFloat 3.6s ease-in-out infinite; }
+@keyframes enemyFloat {
+  0%,100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-1.6vh); }
+}
+/* 被弾：白フラッシュ＋ノックバック */
+.bt-enemy-hit .bt-enemy-img, .bt-enemy-hit .bt-enemy-silhouette { animation: enemyHit .4s steps(2); }
+@keyframes enemyHit {
+  0% { filter: brightness(4) drop-shadow(0 0 30px #fff); transform: translateX(8px); }
+  50% { filter: brightness(.6); transform: translateX(-6px); }
+  100% { transform: none; }
+}
+/* 敵HP50%以下：明滅と歪み */
+.bt-enemy-low { animation: enemyFloat 3.6s ease-in-out infinite, enemyGlitchLow 2.2s steps(2) infinite; }
+@keyframes enemyGlitchLow {
+  0%,88%,100% { opacity: 1; }
+  90% { opacity: .55; transform: translateX(calc(-50% + 3px)); }
+  94% { opacity: .85; transform: translateX(calc(-50% - 2px)); }
+}
+/* 敵の攻撃：前方（画面側）への突進 */
+.bt-enemy-lunge { animation: enemyLunge .5s ease-out; }
+@keyframes enemyLunge {
+  0% { transform: translateX(-50%) translateY(0) scale(1); }
+  35% { transform: translateX(-50%) translateY(3vh) scale(1.12); }
+  100% { transform: translateX(-50%) translateY(0) scale(1); }
+}
+/* 画像未生成時のフォールバック：赤い単眼のグリッチシルエット */
+.bt-enemy-silhouette {
+  width: 26vh; height: 100%;
+  background: #07080e;
+  clip-path: polygon(50% 0, 78% 14%, 88% 42%, 80% 66%, 92% 100%, 8% 100%, 20% 66%, 12% 42%, 22% 14%);
+  position: relative;
+  box-shadow: inset 0 0 40px rgba(255,43,74,.25);
+  animation: silFlicker 2.4s steps(2) infinite;
+}
+.bt-enemy-silhouette .eye {
+  position: absolute; top: 26%; left: 50%; transform: translate(-50%,-50%);
+  width: 3.4vh; height: 3.4vh; border-radius: 50%;
+  background: radial-gradient(circle, #ff2b4a 0%, #7a0a18 65%, transparent 70%);
+  box-shadow: 0 0 24px #ff2b4a, 0 0 60px rgba(255,43,74,.6);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
 .bt-log {
-  position: absolute; top: 24%; left: 50%; transform: translateX(-50%);
-  width: 72%; height: 34%; padding: 1.4vh 2vh; overflow: hidden;
+  position: absolute; top: 58%; left: 50%; transform: translateX(-50%);
+  width: 72%; height: 20%; padding: 1.4vh 2vh; overflow: hidden;
   font-size: clamp(11px, 2vh, 17px); line-height: 1.7;
 }
 .bt-line { animation: fadein .3s; }

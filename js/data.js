@@ -17,19 +17,33 @@ const ASSETS = {
     gate:      'https://d8j0ntlcm91z4.cloudfront.net/user_3GGM3c2Jiga9HiBI66mtETaVtxx/hf_20260709_143934_2f093ff3-6ddc-4952-937c-7f53832d087e.png',
     title:     'https://d8j0ntlcm91z4.cloudfront.net/user_3GGM3c2Jiga9HiBI66mtETaVtxx/hf_20260709_143628_3e5a7a01-7001-4821-bfdf-c0ec8eff1c68.png',
   },
+  /* ミニキャラドット絵：キャラごとに variant（マップ別ポーズ差分）を持てる。
+     'default' は必須。マップ側 spot.variant が無い/未生成なら default にフォールバック。 */
   sprite: {
-    araya: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/74af775de_generated_image.png',
-    rei:   'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f11766e8c_generated_image.png',
-    may:   'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/6f844622a_generated_image.png',
-    siggy: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f0d21724e_generated_image.png',
+    araya: { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/74af775de_generated_image.png' },
+    rei:   { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f11766e8c_generated_image.png' },
+    may:   { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/6f844622a_generated_image.png' },
+    siggy: { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f0d21724e_generated_image.png' },
   },
+  /* 会話立ち絵（背景透過・キャラ単品） */
   tachie: {
     araya: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/743de4178_image.png',
     rei:   'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/1beef16cc_image.png',
     may:   'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/e1c4ce968_image.png',
     siggy: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/bc29c2c69_image.png',
   },
+  /* バトル敵グラフィック */
+  enemy: {
+    boss3: null, // 生成後に差し替え（nullの間はグリッチシルエット表示）
+  },
 };
+
+/* variant付きスプライトURL解決 */
+function spriteUrl(char, variant) {
+  const c = ASSETS.sprite[char];
+  if (!c) return null;
+  return (variant && c[variant]) || c.default || null;
+}
 
 /* ---------- パラメーター定義 ---------- */
 const PARAM_DEF = {
@@ -75,8 +89,8 @@ const MAPS = {
     ambience: 'rain', bgm: 'alley',
     player: { x: 50, y: 82 },
     spots: [
-      { id: 'rei',  type: 'npc', char: 'rei', label: '相棒レイ', x: 36, y: 70, h: 15, pose: 'stand', chapters: [1, 2, 3] },
-      { id: 'may',  type: 'npc', char: 'may', label: '情報屋メイ', x: 21, y: 63, h: 13, pose: 'sit' },
+      { id: 'rei',  type: 'npc', char: 'rei', label: '相棒レイ', x: 36, y: 72, h: 22, variant: 'alley', anim: 'idle', chapters: [1, 2, 3] },
+      { id: 'may',  type: 'npc', char: 'may', label: '情報屋メイ', x: 21, y: 65, h: 18, variant: 'sit', anim: 'idle', pose: 'sit' },
       { id: 'vending', type: 'object', label: '自販機を調べる', x: 79, y: 50, icon: 'dot' },
       { id: 'board',   type: 'object', label: '配管の陰を調べる', x: 60, y: 38, icon: 'dot' },
       { id: 'to_safe',   type: 'exit', label: 'セーフハウスへ', target: 'safehouse', x: 7, y: 80, icon: 'arrow', dir: 'left' },
@@ -88,8 +102,8 @@ const MAPS = {
     ambience: 'rain', bgm: 'market',
     player: { x: 46, y: 82 },
     spots: [
-      { id: 'siggy', type: 'npc', char: 'siggy', label: '密売人ジギ', x: 74, y: 60, h: 15, pose: 'stand' },
-      { id: 'saku',  type: 'npc', char: 'saku', label: 'うずくまる老人', x: 13, y: 66, h: 11, pose: 'sit', silhouette: true, chapters: [2, 3, 4] },
+      { id: 'siggy', type: 'npc', char: 'siggy', label: '密売人ジギ', x: 74, y: 62, h: 22, variant: 'market', anim: 'idle' },
+      { id: 'saku',  type: 'npc', char: 'saku', label: 'うずくまる老人', x: 13, y: 66, h: 14, pose: 'sit', silhouette: true, chapters: [2, 3, 4] },
       { id: 'stall', type: 'object', label: '屋台を調べる', x: 38, y: 52, icon: 'dot' },
       { id: 'to_alley', type: 'exit', label: '路地裏へ戻る', target: 'alley', x: 50, y: 92, icon: 'arrow', dir: 'down' },
       { id: 'to_dock',  type: 'exit', label: '廃棄ドックへ', target: 'dock', x: 8, y: 34, icon: 'dot-exit', needUnlock: true },
@@ -365,6 +379,8 @@ const CHAPTERS = {
 const BOSS3 = {
   name: '処理班・追跡個体',
   hp: 100,
+  img: 'boss3', // ASSETS.enemy のキー
+
   intro: ['──廃棄ドックの闇から、駆動音。', '組織の「処理班」。レイの信号が途絶えた方角から、それは来た。'],
   dialogueIntro: '……クソ、ここまでか。だが、掃除屋。お前は何も分かっちゃいない。あの女が「何回目」かも。',
   choices: [

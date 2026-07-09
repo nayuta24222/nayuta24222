@@ -215,10 +215,12 @@ const UI = {
     scene.appendChild(el('div', 'scanlines'));
     if (map.ambience === 'rain') scene.appendChild(this.makeRain());
 
-    // プレイヤー（アラヤ）
-    const pl = el('div', 'sprite player');
+    // プレイヤー（アラヤ）：アイドルアニメ＋タバコの煙
+    const pl = el('div', 'sprite player anim-idle');
     pl.style.left = map.player.x + '%'; pl.style.top = map.player.y + '%';
-    pl.appendChild(this.spriteImg('araya'));
+    const plImg = this.spriteImg('araya', map.playerVariant);
+    if (plImg) pl.appendChild(plImg);
+    pl.appendChild(this.makeSmoke());
     scene.appendChild(pl);
 
     // スポット（NPC / オブジェクト / 出口）
@@ -245,10 +247,23 @@ const UI = {
     if (!skipFade) { scene.classList.add('fade-in'); setTimeout(() => scene.classList.remove('fade-in'), 500); }
   },
 
-  spriteImg(key) {
+  spriteImg(char, variant) {
+    const url = spriteUrl(char, variant);
+    if (!url) return null;
     const img = el('img', 'px');
-    img.src = ASSETS.sprite[key]; img.draggable = false;
+    img.src = url; img.draggable = false;
     return img;
+  },
+
+  /* タバコの煙（CSSループアニメーション・キャラの頭上に漂う） */
+  makeSmoke() {
+    const s = el('div', 'smoke');
+    for (let i = 0; i < 3; i++) {
+      const p = el('span', 'puff');
+      p.style.animationDelay = (i * 1.4) + 's';
+      s.appendChild(p);
+    }
+    return s;
   },
 
   makeRain() {
@@ -279,11 +294,13 @@ const UI = {
     if (sp.builtin) {
       inner = `<span class="marker red-dot pulse"></span>`;
     } else if (sp.silhouette) {
-      inner = `<span class="mini-silhouette ${sp.pose}"></span><span class="marker talk-mark">!</span>`;
+      inner = `<span class="mini-silhouette ${sp.pose || ''}"></span><span class="marker talk-mark">!</span>`;
     } else {
-      inner = `<img class="px npc-img" src="${ASSETS.sprite[sp.char]}" draggable="false" style="height:${sp.h}vh"><span class="marker talk-mark">!</span>`;
+      const url = spriteUrl(sp.char, sp.variant);
+      inner = `<img class="px npc-img" src="${url}" draggable="false" style="height:${sp.h}vh"><span class="marker talk-mark">!</span>`;
     }
-    scene.appendChild(this.hotspot(sp, 'npc', inner, `[話しかける] ${sp.label}`, () => Flow.talk(sp)));
+    const cls = 'npc' + (sp.anim ? ' anim-' + sp.anim : '');
+    scene.appendChild(this.hotspot(sp, cls, inner, `[話しかける] ${sp.label}`, () => Flow.talk(sp)));
   },
 
   addObject(scene, sp) {
@@ -497,6 +514,10 @@ const Battle = {
     Engine.s.mode = 'battle';
     const maxHp = Math.max(10, 100 - Engine.s.params.corr);
     this.st = { boss: bossDef, bossHp: bossDef.hp, hp: maxHp, maxHp, guard: false, onEnd, dialogue: false };
+    const enemyUrl = bossDef.img ? ASSETS.enemy[bossDef.img] : null;
+    const enemyHtml = enemyUrl
+      ? `<img class="px bt-enemy-img" src="${enemyUrl}" draggable="false">`
+      : `<div class="bt-enemy-silhouette"><span class="eye"></span></div>`;
     const layer = $('#battle-layer');
     layer.innerHTML = `
       <div class="bt-dim"></div>
@@ -504,6 +525,7 @@ const Battle = {
         <div class="bt-boss-name">${bossDef.name}</div>
         <div class="bar big"><div class="fill boss"></div></div>
       </div>
+      <div class="bt-enemy anim-float">${enemyHtml}</div>
       <div class="bt-log panel"></div>
       <div class="bt-me panel">ARAYA HP <span id="bt-hp"></span>/${maxHp}</div>
       <div class="bt-cmds panel">
@@ -529,6 +551,25 @@ const Battle = {
   render() {
     $('#battle-layer .fill.boss').style.width = (this.st.bossHp / this.st.boss.hp * 100) + '%';
     $('#bt-hp').textContent = this.st.hp;
+    // HPが減るほど敵の姿が乱れる
+    const e = $('#battle-layer .bt-enemy');
+    if (e) e.classList.toggle('bt-enemy-low', this.st.bossHp <= 50);
+  },
+
+  enemyHit() {
+    const e = $('#battle-layer .bt-enemy');
+    if (!e) return;
+    e.classList.remove('bt-enemy-hit');
+    void e.offsetWidth; // アニメ再トリガー
+    e.classList.add('bt-enemy-hit');
+  },
+
+  enemyLunge() {
+    const e = $('#battle-layer .bt-enemy');
+    if (!e) return;
+    e.classList.remove('bt-enemy-lunge');
+    void e.offsetWidth;
+    e.classList.add('bt-enemy-lunge');
   },
 
   turn(cmd) {
@@ -539,6 +580,7 @@ const Battle = {
       const dmg = Math.floor(rand(15, 26));
       st.bossHp = Math.max(0, st.bossHp - dmg);
       AudioEngine.hit();
+      this.enemyHit();
       this.log(`アラヤの攻撃。敵に ${dmg} のダメージ。`);
     } else if (cmd === 'def') {
       st.guard = true;
@@ -559,6 +601,7 @@ const Battle = {
     if (st.bossHp <= 30) { setTimeout(() => this.enterDialogue(), 700); return; }
     // 敵ターン
     setTimeout(() => {
+      this.enemyLunge();
       let dmg = Math.floor(rand(10, 18));
       if (st.guard) dmg = Math.ceil(dmg / 2);
       st.hp = Math.max(0, st.hp - dmg);
