@@ -409,7 +409,7 @@ img.px, .npc-img { image-rendering: pixelated; }
 #battle-layer.bt-mono, #game.bt-mono #scene { filter: grayscale(.9) contrast(1.15); transition: filter 2s; }
 
 /* ============ モーダル ============ */
-#modal-layer { position: absolute; inset: 0; z-index: 500; display: none; }
+#modal-layer { position: absolute; inset: 0; z-index: 850; display: none; }
 #modal-layer.active { display: block; }
 .md-dim { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
 .md-box {
@@ -436,13 +436,34 @@ img.px, .npc-img { image-rendering: pixelated; }
 .slot-no { color: var(--amber); margin-right: 1em; }
 .pc-menu { display: flex; flex-direction: column; gap: 1.2vh; align-items: flex-start; }
 
+/* ---- 設定メニュー ---- */
+.set-list { display: flex; flex-direction: column; gap: 1.6vh; }
+.set-row { display: flex; align-items: center; gap: 1.4em; font-size: clamp(11px, 1.9vh, 16px); }
+.set-label { width: 6em; color: #bcc; letter-spacing: .1em; }
+.set-val { width: 2.5em; text-align: right; color: var(--cyan); }
+.set-row input[type="range"] {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; background: #1a1c24; border: 1px solid #333; outline: none;
+}
+.set-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 18px; background: var(--red); cursor: pointer;
+  box-shadow: 0 0 8px rgba(255,43,74,.7);
+}
+.set-row input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 18px; background: var(--red); border: none; cursor: pointer;
+  box-shadow: 0 0 8px rgba(255,43,74,.7);
+}
+.set-speed { display: flex; gap: .6em; }
+.mini-btn.on { border-color: var(--red); background: rgba(255,43,74,.18); color: #fff; }
+
 /* ============ トースト ============ */
 #toast {
   position: absolute; bottom: 14%; left: 50%; transform: translateX(-50%) translateY(10px);
   background: var(--panel); border: 1px solid var(--amber);
   color: var(--amber); padding: .7em 1.6em;
   font-size: clamp(11px, 1.9vh, 16px);
-  opacity: 0; transition: all .3s; pointer-events: none; z-index: 600;
+  opacity: 0; transition: all .3s; pointer-events: none; z-index: 950;
   text-shadow: 0 0 6px rgba(255,182,72,.5);
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

@@ -4,7 +4,27 @@
    ============================================================ */
 'use strict';
 
-const LS = { LOOP: 'dmn_loop', SLOTS: 'dmn_slots', ED5: 'dmn_ed5', LEGACY: 'dmn_legacy' };
+const LS = { LOOP: 'dmn_loop', SLOTS: 'dmn_slots', ED5: 'dmn_ed5', LEGACY: 'dmn_legacy', SETTINGS: 'dmn_settings' };
+
+/* ============ Settings：音量・テキスト速度 ============ */
+const Settings = {
+  data: { master: 55, bgm: 50, amb: 60, se: 80, muted: false, textSpeed: 26 },
+  load() {
+    try { Object.assign(this.data, JSON.parse(localStorage.getItem(LS.SETTINGS) || '{}')); } catch (e) {}
+    this.apply();
+  },
+  save() { localStorage.setItem(LS.SETTINGS, JSON.stringify(this.data)); },
+  apply() {
+    AudioEngine.setVolumes({
+      master: this.data.master / 100,
+      bgm: this.data.bgm / 100,
+      amb: this.data.amb / 100,
+      se: this.data.se / 100,
+      muted: this.data.muted,
+    });
+  },
+  set(key, val) { this.data[key] = val; this.apply(); this.save(); },
+};
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -110,6 +130,7 @@ const UI = {
           <button id="btn-items">所持品</button>
           <button id="btn-save">SAVE</button>
           <button id="btn-load">LOAD</button>
+          <button id="btn-settings">設定</button>
         </div>
         <div id="minimap" class="panel"><div class="mm-title">- MAP -</div><svg id="mm-svg" viewBox="0 0 100 90"></svg></div>
         <div id="objective" class="panel"></div>
@@ -125,6 +146,7 @@ const UI = {
     $('#btn-items').onclick = () => { AudioEngine.click(); Modal.items(); };
     $('#btn-save').onclick = () => { AudioEngine.click(); Modal.saveLoad('save'); };
     $('#btn-load').onclick = () => { AudioEngine.click(); Modal.saveLoad('load'); };
+    $('#btn-settings').onclick = () => { AudioEngine.click(); Modal.settings(); };
   },
 
   toast(msg, ms = 2400) {
@@ -410,7 +432,7 @@ const EventView = {
         if (this.queue.length || this.choices || this.onDone) nx.style.display = '';
         if (!this.queue.length && this.choices) this.showChoices();
       }
-    }, 26);
+    }, Settings.data.textSpeed);
   },
 
   advance() {
@@ -977,6 +999,54 @@ const Modal = {
     });
   },
 
+  settings() {
+    const d = Settings.data;
+    const slider = (key, label) => `
+      <div class="set-row">
+        <span class="set-label">${label}</span>
+        <input type="range" min="0" max="100" value="${d[key]}" data-set="${key}">
+        <span class="set-val" id="sv-${key}">${d[key]}</span>
+      </div>`;
+    this.open(`<h3>設定</h3>
+      <div class="set-list">
+        ${slider('master', '全体音量')}
+        ${slider('bgm', 'BGM')}
+        ${slider('amb', '環境音')}
+        ${slider('se', '効果音')}
+        <div class="set-row">
+          <span class="set-label">ミュート</span>
+          <button class="mini-btn" id="set-mute">${d.muted ? 'ON（消音中）' : 'OFF'}</button>
+        </div>
+        <div class="set-row">
+          <span class="set-label">文字速度</span>
+          <div class="set-speed">
+            <button class="mini-btn${d.textSpeed === 42 ? ' on' : ''}" data-speed="42">遅い</button>
+            <button class="mini-btn${d.textSpeed === 26 ? ' on' : ''}" data-speed="26">普通</button>
+            <button class="mini-btn${d.textSpeed === 12 ? ' on' : ''}" data-speed="12">速い</button>
+          </div>
+        </div>
+      </div>`);
+    document.querySelectorAll('[data-set]').forEach(r => {
+      r.oninput = () => {
+        Settings.set(r.dataset.set, +r.value);
+        $('#sv-' + r.dataset.set).textContent = r.value;
+      };
+      r.onchange = () => AudioEngine.confirm(); // 音量確認用のフィードバック音
+    });
+    $('#set-mute').onclick = () => {
+      Settings.set('muted', !Settings.data.muted);
+      $('#set-mute').textContent = Settings.data.muted ? 'ON（消音中）' : 'OFF';
+      AudioEngine.click();
+    };
+    document.querySelectorAll('[data-speed]').forEach(b => {
+      b.onclick = () => {
+        Settings.set('textSpeed', +b.dataset.speed);
+        document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('on', x === b));
+        AudioEngine.click();
+      };
+    });
+  },
+
   pc() {
     const s = Engine.s;
     const frags = Engine.fragCount();
@@ -1039,6 +1109,7 @@ const Title = {
         <div class="tt-menu">
           <button id="tt-new">はじめから</button>
           <button id="tt-cont" ${hasSave ? '' : 'disabled'}>つづきから</button>
+          <button id="tt-settings">せってい</button>
         </div>
         <div class="tt-loop">${loop > 0 ? `SYSTEM: LOOP_COUNT = ${loop}` : ''}</div>
       </div>`;
@@ -1055,6 +1126,7 @@ const Title = {
       Engine.s = Engine.fresh();
       this.prologue();
     };
+    $('#tt-settings').onclick = () => { AudioEngine.unlock(); AudioEngine.click(); Modal.settings(); };
     $('#tt-cont').onclick = () => {
       AudioEngine.unlock(); AudioEngine.confirm();
       const slots = Engine.readSlots();
@@ -1081,6 +1153,7 @@ const Title = {
 
 /* ============ 起動 ============ */
 window.addEventListener('DOMContentLoaded', () => {
+  Settings.load();
   UI.init();
   window.addEventListener('pointerdown', () => AudioEngine.unlock(), { once: true });
 });

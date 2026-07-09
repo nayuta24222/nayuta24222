@@ -10,14 +10,30 @@ const AudioEngine = (() => {
   let bgmNodes = [], ambNodes = [];
   let detuneAmt = 0; // 違和感によるピッチ低下
 
+  // 音量設定（0〜1）。ensure()前に設定されても保持し、初期化時に反映する
+  const volumes = { master: 0.55, bgm: 0.5, amb: 0.6, se: 0.8, muted: false };
+
+  function busOf(key) {
+    return { master, bgm: bgmBus, amb: ambBus, se: seBus }[key];
+  }
+  function applyVolumes() {
+    if (!ctx) return;
+    const m = volumes.muted ? 0 : 1;
+    master.gain.setTargetAtTime(volumes.master * m, ctx.currentTime, 0.05);
+    bgmBus.gain.setTargetAtTime(volumes.bgm, ctx.currentTime, 0.05);
+    ambBus.gain.setTargetAtTime(volumes.amb, ctx.currentTime, 0.05);
+    seBus.gain.setTargetAtTime(volumes.se, ctx.currentTime, 0.05);
+  }
+
   function ensure() {
     if (ctx) return true;
     try {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-      master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
-      bgmBus = ctx.createGain(); bgmBus.gain.value = 0.5; bgmBus.connect(master);
-      ambBus = ctx.createGain(); ambBus.gain.value = 0.6; ambBus.connect(master);
-      seBus  = ctx.createGain(); seBus.gain.value  = 0.8; seBus.connect(master);
+      master = ctx.createGain(); master.connect(ctx.destination);
+      bgmBus = ctx.createGain(); bgmBus.connect(master);
+      ambBus = ctx.createGain(); ambBus.connect(master);
+      seBus  = ctx.createGain(); seBus.connect(master);
+      applyVolumes();
       return true;
     } catch (e) { return false; }
   }
@@ -135,6 +151,12 @@ const AudioEngine = (() => {
 
   return {
     unlock() { resume(); },
+    /* 音量設定：{master, bgm, amb, se: 0〜1, muted: bool} の部分更新 */
+    setVolumes(v) {
+      Object.assign(volumes, v);
+      applyVolumes();
+    },
+    getVolumes() { return { ...volumes }; },
     setDistortion(cog) {
       detuneAmt = cog >= 50 ? (cog - 50) * 1.2 : 0; // 違和感50%以上でピッチが下がる
       bgmNodes.forEach(n => { if (n.detune) n.detune.setTargetAtTime(-detuneAmt, ctx ? ctx.currentTime : 0, 3); });
