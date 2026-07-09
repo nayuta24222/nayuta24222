@@ -38,6 +38,9 @@ const ASSETS = {
   },
 };
 
+/* 白背景をクライアント側で透過処理するURL群（生成直後の未透過スプライトを登録） */
+const WHITE_KEY_URLS = new Set([]);
+
 /* variant付きスプライトURL解決 */
 function spriteUrl(char, variant) {
   const c = ASSETS.sprite[char];

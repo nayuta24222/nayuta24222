@@ -30,6 +30,63 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls)
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 
+/* ============ SpriteKey：白背景の透過処理 ============
+   生成画像の「純白の背景」を、画像の縁からのフラッドフィルで透明化する。
+   キャラ内部の白（シャツ等）は縁と繋がっていないため保持される。
+   CORS不可・処理失敗時は元画像のまま表示（フォールバック）。 */
+const SpriteKey = {
+  cache: new Map(), // url -> dataURL | 'raw'
+  TOL: 235,         // これ以上明るいRGBを「背景の白」とみなす
+
+  apply(imgEl, url) {
+    const hit = this.cache.get(url);
+    if (hit && hit !== 'raw') { imgEl.src = hit; return; }
+    if (hit === 'raw') { imgEl.src = url; return; }
+    imgEl.src = url; // まず元画像を出し、処理でき次第差し替える
+    const probe = new Image();
+    probe.crossOrigin = 'anonymous';
+    probe.onload = () => {
+      try {
+        const keyed = this.key(probe);
+        this.cache.set(url, keyed);
+        imgEl.src = keyed;
+      } catch (e) { this.cache.set(url, 'raw'); } // canvas汚染など
+    };
+    probe.onerror = () => this.cache.set(url, 'raw');
+    probe.src = url;
+  },
+
+  key(img) {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0);
+    const im = cx.getImageData(0, 0, w, h);
+    const d = im.data;
+    const isBg = (i) => d[i] >= this.TOL && d[i + 1] >= this.TOL && d[i + 2] >= this.TOL;
+    const seen = new Uint8Array(w * h);
+    const stack = [];
+    for (let x = 0; x < w; x++) { stack.push(x, x + (h - 1) * w); }
+    for (let y = 0; y < h; y++) { stack.push(y * w, y * w + w - 1); }
+    while (stack.length) {
+      const p = stack.pop();
+      if (seen[p]) continue;
+      seen[p] = 1;
+      const i = p * 4;
+      if (d[i + 3] === 0) { /* 既に透明 */ } else if (!isBg(i)) continue;
+      d[i + 3] = 0;
+      const x = p % w, y = (p / w) | 0;
+      if (x > 0) stack.push(p - 1);
+      if (x < w - 1) stack.push(p + 1);
+      if (y > 0) stack.push(p - w);
+      if (y < h - 1) stack.push(p + w);
+    }
+    cx.putImageData(im, 0, 0);
+    return cv.toDataURL('image/png');
+  },
+};
+
 /* ============ Engine：状態管理 ============ */
 const Engine = {
   s: null,
@@ -273,7 +330,9 @@ const UI = {
     const url = spriteUrl(char, variant);
     if (!url) return null;
     const img = el('img', 'px');
-    img.src = url; img.draggable = false;
+    img.draggable = false;
+    if (WHITE_KEY_URLS.has(url)) SpriteKey.apply(img, url);
+    else img.src = url;
     return img;
   },
 
@@ -318,11 +377,19 @@ const UI = {
     } else if (sp.silhouette) {
       inner = `<span class="mini-silhouette ${sp.pose || ''}"></span><span class="marker talk-mark">!</span>`;
     } else {
-      const url = spriteUrl(sp.char, sp.variant);
-      inner = `<img class="px npc-img" src="${url}" draggable="false" style="height:${sp.h}vh"><span class="marker talk-mark">!</span>`;
+      inner = `<span class="marker talk-mark">!</span>`;
     }
     const cls = 'npc' + (sp.anim ? ' anim-' + sp.anim : '');
-    scene.appendChild(this.hotspot(sp, cls, inner, `[話しかける] ${sp.label}`, () => Flow.talk(sp)));
+    const spot = this.hotspot(sp, cls, inner, `[話しかける] ${sp.label}`, () => Flow.talk(sp));
+    if (!sp.builtin && !sp.silhouette) {
+      const img = this.spriteImg(sp.char, sp.variant);
+      if (img) {
+        img.classList.add('npc-img');
+        img.style.height = sp.h + 'vh';
+        spot.prepend(img);
+      }
+    }
+    scene.appendChild(spot);
   },
 
   addObject(scene, sp) {
@@ -538,7 +605,7 @@ const Battle = {
     this.st = { boss: bossDef, bossHp: bossDef.hp, hp: maxHp, maxHp, guard: false, onEnd, dialogue: false };
     const enemyUrl = bossDef.img ? ASSETS.enemy[bossDef.img] : null;
     const enemyHtml = enemyUrl
-      ? `<img class="px bt-enemy-img" src="${enemyUrl}" draggable="false">`
+      ? `<img class="px bt-enemy-img" draggable="false">`
       : `<div class="bt-enemy-silhouette"><span class="eye"></span></div>`;
     const layer = $('#battle-layer');
     layer.innerHTML = `
@@ -557,6 +624,11 @@ const Battle = {
         <button data-c="watch">4. 様子を見る</button>
       </div>`;
     layer.classList.add('active');
+    if (enemyUrl) {
+      const eimg = layer.querySelector('.bt-enemy-img');
+      if (WHITE_KEY_URLS.has(enemyUrl)) SpriteKey.apply(eimg, enemyUrl);
+      else eimg.src = enemyUrl;
+    }
     layer.querySelectorAll('.bt-cmds button').forEach(b => b.onclick = () => { AudioEngine.click(); this.turn(b.dataset.c); });
     AudioEngine.scene('battle', null);
     this.log(bossDef.intro.join(' '));
