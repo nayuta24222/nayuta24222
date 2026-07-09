@@ -38,22 +38,58 @@ const SpriteKey = {
   cache: new Map(), // url -> dataURL | 'raw'
   TOL: 235,         // これ以上明るいRGBを「背景の白」とみなす
 
-  apply(imgEl, url) {
-    const hit = this.cache.get(url);
+  apply(imgEl, url, region, fallbackUrl) {
+    const ck = url + (region ? `#${region[0]}-${region[1]}` : '');
+    const hit = this.cache.get(ck);
     if (hit && hit !== 'raw') { imgEl.src = hit; return; }
-    if (hit === 'raw') { imgEl.src = url; return; }
-    imgEl.src = url; // まず元画像を出し、処理でき次第差し替える
+    if (hit === 'raw') { this.fallback(imgEl, url, region, fallbackUrl); return; }
+    if (!region) imgEl.src = url; // 単体画像は先に原画を表示（シートは切出し完了まで非表示）
     const probe = new Image();
     probe.crossOrigin = 'anonymous';
     probe.onload = () => {
       try {
-        const keyed = this.key(probe);
-        this.cache.set(url, keyed);
-        imgEl.src = keyed;
-      } catch (e) { this.cache.set(url, 'raw'); } // canvas汚染など
+        const cv = this.key(probe);
+        const out = region ? this.crop(cv, region) : cv;
+        const dataUrl = out.toDataURL('image/png');
+        this.cache.set(ck, dataUrl);
+        imgEl.src = dataUrl;
+      } catch (e) { this.cache.set(ck, 'raw'); this.fallback(imgEl, url, region, fallbackUrl); } // canvas汚染など
     };
-    probe.onerror = () => this.cache.set(url, 'raw');
+    probe.onerror = () => { this.cache.set(ck, 'raw'); this.fallback(imgEl, url, region, fallbackUrl); };
     probe.src = url;
+  },
+
+  /* 切出し不可時：代替URLがあればそれを、シート切出しだった場合は非表示に（全景表示事故を防ぐ） */
+  fallback(imgEl, url, region, fallbackUrl) {
+    if (fallbackUrl) { imgEl.src = fallbackUrl; return; }
+    if (region) { imgEl.style.display = 'none'; return; }
+    imgEl.src = url;
+  },
+
+  /* シートから横位置 region=[x0,x1]（0〜1）を切り出し、不透明部分でトリムする */
+  crop(cv, region) {
+    const w = cv.width, h = cv.height;
+    const sx = Math.floor(region[0] * w), sw = Math.ceil((region[1] - region[0]) * w);
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const im = cx.getImageData(sx, 0, sw, h);
+    const d = im.data;
+    let minX = sw, maxX = -1, minY = h, maxY = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < sw; x++) {
+        if (d[(y * sw + x) * 4 + 3] > 8) {
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) { minX = 0; minY = 0; maxX = sw - 1; maxY = h - 1; } // 全透明時は素通し
+    const pad = 2;
+    minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+    maxX = Math.min(sw - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+    const out = document.createElement('canvas');
+    out.width = maxX - minX + 1; out.height = maxY - minY + 1;
+    out.getContext('2d').putImageData(im, -minX, -minY);
+    return out;
   },
 
   key(img) {
@@ -83,7 +119,7 @@ const SpriteKey = {
       if (y < h - 1) stack.push(p + w);
     }
     cx.putImageData(im, 0, 0);
-    return cv.toDataURL('image/png');
+    return cv; // canvasを返す（呼び出し側で切り出し/変換）
   },
 };
 
@@ -327,12 +363,13 @@ const UI = {
   },
 
   spriteImg(char, variant) {
-    const url = spriteUrl(char, variant);
-    if (!url) return null;
+    const v = spriteUrl(char, variant);
+    if (!v) return null;
     const img = el('img', 'px');
     img.draggable = false;
-    if (WHITE_KEY_URLS.has(url)) SpriteKey.apply(img, url);
-    else img.src = url;
+    if (typeof v === 'object') SpriteKey.apply(img, v.url, v.region, v.fallback); // シート切出し＋透過
+    else if (WHITE_KEY_URLS.has(v)) SpriteKey.apply(img, v);
+    else img.src = v;
     return img;
   },
 

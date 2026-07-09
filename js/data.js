@@ -18,12 +18,40 @@ const ASSETS = {
     title:     'https://d8j0ntlcm91z4.cloudfront.net/user_3GGM3c2Jiga9HiBI66mtETaVtxx/hf_20260709_143628_3e5a7a01-7001-4821-bfdf-c0ec8eff1c68.png',
   },
   /* ミニキャラドット絵：キャラごとに variant（マップ別ポーズ差分）を持てる。
-     'default' は必須。マップ側 spot.variant が無い/未生成なら default にフォールバック。 */
+     'default' は必須。マップ側 spot.variant が無い/未生成なら default にフォールバック。
+     {url, region:[x0,x1], fallback} 形式はシート画像からのクライアント側切出し＋白背景透過。 */
   sprite: {
-    araya: { default: 'https://d2ol7oe51mr4n9.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/826c0200-dba3-4913-8b1c-8cb9c1665afd.png' }, // 正式採用版（ユーザー承認済み・透過）
-    rei:   { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f11766e8c_generated_image.png' },
-    may:   { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/6f844622a_generated_image.png' },
-    siggy: { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f0d21724e_generated_image.png' },
+    araya: {
+      default: {
+        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194101_0f85d1a6-b79d-4fb4-ad3b-ecd42c69c6f0.png',
+        region: [0, 0.5],
+        fallback: 'https://d2ol7oe51mr4n9.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/826c0200-dba3-4913-8b1c-8cb9c1665afd.png', // 旧承認版（透過済）
+      },
+    },
+    rei: {
+      default: {
+        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194101_0f85d1a6-b79d-4fb4-ad3b-ecd42c69c6f0.png',
+        region: [0.5, 1],
+      },
+    },
+    may: {
+      default: {
+        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194239_ead4734c-0130-4c66-ad52-2d7502998c8f.png',
+        region: [0, 0.3333],
+      },
+    },
+    siggy: {
+      default: {
+        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194239_ead4734c-0130-4c66-ad52-2d7502998c8f.png',
+        region: [0.3333, 0.6666],
+      },
+    },
+    unit09: {
+      default: {
+        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194239_ead4734c-0130-4c66-ad52-2d7502998c8f.png',
+        region: [0.6666, 1],
+      },
+    },
   },
   /* 会話立ち絵（背景透過・キャラ単品） */
   tachie: {
@@ -34,12 +62,14 @@ const ASSETS = {
   },
   /* バトル敵グラフィック */
   enemy: {
-    boss3: null, // 生成後に差し替え（nullの間はグリッチシルエット表示）
+    boss3: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_191343_ef058e61-40c8-473e-8d73-748013991947.png',
   },
 };
 
 /* 白背景をクライアント側で透過処理するURL群（生成直後の未透過スプライトを登録） */
-const WHITE_KEY_URLS = new Set([]);
+const WHITE_KEY_URLS = new Set([
+  ASSETS.enemy.boss3,
+]);
 
 /* variant付きスプライトURL解決 */
 function spriteUrl(char, variant) {
@@ -118,7 +148,7 @@ const MAPS = {
     ambience: 'rain', bgm: 'dock',
     player: { x: 46, y: 82 },
     spots: [
-      { id: 'unit09', type: 'npc', char: 'unit09', label: '旧型の頭部ユニット', x: 76, y: 55, h: 0, builtin: true },
+      { id: 'unit09', type: 'npc', char: 'unit09', label: '旧型の頭部ユニット', x: 76, y: 60, h: 12, anim: 'idle' },
       { id: 'scrap',  type: 'object', label: '残骸の山を漁る', x: 26, y: 60, icon: 'dot' },
       { id: 'water',  type: 'object', label: '油膜の水面を覗く', x: 55, y: 68, icon: 'dot' },
       { id: 'to_market', type: 'exit', label: '闇市場へ戻る', target: 'market', x: 50, y: 92, icon: 'arrow', dir: 'down' },
