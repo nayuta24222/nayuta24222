@@ -17,48 +17,20 @@ const ASSETS = {
     gate:      'https://d8j0ntlcm91z4.cloudfront.net/user_3GGM3c2Jiga9HiBI66mtETaVtxx/hf_20260709_143934_2f093ff3-6ddc-4952-937c-7f53832d087e.png',
     title:     'https://d8j0ntlcm91z4.cloudfront.net/user_3GGM3c2Jiga9HiBI66mtETaVtxx/hf_20260709_143628_3e5a7a01-7001-4821-bfdf-c0ec8eff1c68.png',
   },
-  /* ミニキャラドット絵：キャラごとに variant（マップ別ポーズ差分）を持てる。
-     'default' は必須。マップ側 spot.variant が無い/未生成なら default にフォールバック。
-     {url, region:[x0,x1], fallback} 形式はシート画像からのクライアント側切出し＋白背景透過。 */
+  /* ミニキャラドット絵（ユーザー支給・背景透過済み・ローカル同梱）
+     キャラごとに variant（マップ別ポーズ差分）を持てる。'default' は必須。 */
   sprite: {
-    araya: {
-      default: {
-        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194101_0f85d1a6-b79d-4fb4-ad3b-ecd42c69c6f0.png',
-        region: [0, 0.5],
-        fallback: 'https://d2ol7oe51mr4n9.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/826c0200-dba3-4913-8b1c-8cb9c1665afd.png', // 旧承認版（透過済）
-      },
-    },
-    rei: {
-      default: {
-        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194101_0f85d1a6-b79d-4fb4-ad3b-ecd42c69c6f0.png',
-        region: [0.5, 1],
-      },
-    },
-    may: {
-      default: {
-        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194239_ead4734c-0130-4c66-ad52-2d7502998c8f.png',
-        region: [0, 0.3333],
-      },
-    },
-    siggy: {
-      default: {
-        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194239_ead4734c-0130-4c66-ad52-2d7502998c8f.png',
-        region: [0.3333, 0.6666],
-      },
-    },
-    unit09: {
-      default: {
-        url: 'https://d8j0ntlcm91z4.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/hf_20260709_194239_ead4734c-0130-4c66-ad52-2d7502998c8f.png',
-        region: [0.6666, 1],
-      },
-    },
+    araya: { default: 'assets/sprite/araya.png' },
+    rei:   { default: 'assets/sprite/rei.png' },
+    may:   { default: 'assets/sprite/may.png' },
+    siggy: { default: 'assets/sprite/siggy.png' },
   },
-  /* 会話立ち絵（背景透過・キャラ単品） */
+  /* 会話立ち絵（ユーザー支給・背景透過済み・ローカル同梱） */
   tachie: {
-    araya: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/743de4178_image.png',
-    rei:   'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/1beef16cc_image.png',
-    may:   'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/e1c4ce968_image.png',
-    siggy: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/bc29c2c69_image.png',
+    araya: 'assets/tachie/araya.png',
+    rei:   'assets/tachie/rei.png',
+    may:   'assets/tachie/may.png',
+    siggy: 'assets/tachie/siggy.png',
   },
   /* バトル敵グラフィック */
   enemy: {
@@ -86,19 +58,48 @@ const PARAM_DEF = {
   corr: { label: '汚染度',       max: 100, init: 0 },
 };
 
-/* ---------- アイテム ---------- */
+/* ---------- アイテム ----------
+   desc = 所持品欄の短い説明 / lore = PC端末「アイテム記録」で読める詳細記録 */
 const ITEMS = {
-  black_neon:  { name: 'ブラック・ネオン', desc: 'アラヤの銘柄。吸うと少しだけ頭が晴れる（汚染度-10）。', use: { corr: -10 } },
-  queen_cobra: { name: 'クィーン・コブラ', desc: 'レイの好む高級タバコ。渡せば喜ぶだろう。', gift: 'rei' },
-  blue_amp:    { name: 'ブルー・アンフェタ', desc: '闇市の回復薬。HPは戻るが、記憶の輪郭が溶ける（汚染度+10）。', battle: true },
-  access_log:  { name: 'アクセスログ', desc: '所持品に紛れていた覚えのないログ。タイムスタンプが……未来？', meta: true },
-  rusty_frame: { name: '錆びたサングラスのフレーム', desc: '廃棄ドックで拾った。いまかけているものと全く同じ型。', meta: true },
-  log_memory:  { name: 'ログメモリ', desc: 'メイから買った生きたデータ。対話で突きつけられる。', clue: true },
-  frag1: { name: '破損ファイル_01', desc: '解析不能のデータ断片。セーフハウスのPCで解析できる。', frag: true },
-  frag2: { name: '破損ファイル_02', desc: '解析不能のデータ断片。誰かの「泣き声」が記録されている。', frag: true },
-  frag3: { name: '破損ファイル_03', desc: '解析不能のデータ断片。ファイル名がこの端末の起動日時と一致する。', frag: true },
-  frag4: { name: '破損ファイル_04', desc: '解析不能のデータ断片。レイの声紋……にしては、少し違う。', frag: true },
-  frag5: { name: '破損ファイル_05', desc: '解析不能のデータ断片。「DELETE ME NOT」という文字列だけが読める。', frag: true },
+  black_neon:  { name: 'ブラック・ネオン', desc: 'アラヤの銘柄。吸うと少しだけ頭が晴れる（汚染度-10）。', use: { corr: -10 },
+    lore: '最下層でしか流通していない安タバコ。フィルタに炭の粒が混ざっており、吸うと舌の奥に錆の味が残る。アラヤは「この味しか、本物だと確信できるものがない」と言う。パッケージの製造所住所は、存在しない区画を指している。' },
+  queen_cobra: { name: 'クィーン・コブラ', desc: 'レイの好む高級タバコ。渡せば喜ぶだろう。', gift: 'rei',
+    lore: '上層の社交場向けに巻かれる細身の高級銘柄。甘い蜂蜜の香りがするが、後味は毒のように冷たい。レイがこれを選ぶ理由を聞いたことがある。「脱皮の前は、甘いものが欲しくなるんだと」──冗談のつもりだったのだろうか。' },
+  blue_amp:    { name: 'ブルー・アンフェタ', desc: '闇市の回復薬。HPは戻るが、記憶の輪郭が溶ける（汚染度+10）。', battle: true,
+    lore: 'ジギが調合する青い液体。肉体の損傷報告を脳が「無視」するようになるだけで、傷が治るわけではない。常用者は最後に自分の名前を忘れる。瓶底に沈む結晶は、どう見ても雪の結晶と同じ形をしている。この街に雪は降らないのに。' },
+  access_log:  { name: 'アクセスログ', desc: '所持品に紛れていた覚えのないログ。タイムスタンプが……未来？', meta: true,
+    lore: '起動時刻・終了時刻・保存回数だけが延々と記録されたテキスト。奇妙なのは、その一部が「まだ来ていない日時」を指していること。最終行にはこうある──【SESSION_OWNER: 不明。ただし常に同一の視点座標からアクセス】' },
+  rusty_frame: { name: '錆びたサングラスのフレーム', desc: '廃棄ドックで拾った。いまかけているものと全く同じ型。', meta: true,
+    lore: '型番、傷の位置、テンプルの歪みまで、いまアラヤがかけているものと完全に一致する。違いは錆の量──およそ数十年分。廃棄ドックの水たまりに、これは「何個も」沈んでいたような気がするが、思い出そうとすると頭痛がする。' },
+  log_memory:  { name: 'ログメモリ', desc: 'メイから買った生きたデータ。対話で突きつけられる。', clue: true,
+    lore: 'メイが「生きてる」と形容した記録媒体。差し込むたびに中身のサイズが微増している。誰かが今も書き込み続けている──あるいは、これ自体が「記録し続ける生き物」なのか。処理班の個体識別コードと同じ接頭辞のファイルが詰まっている。' },
+  frag1: { name: '破損ファイル_01', desc: '解析不能のデータ断片。セーフハウスのPCで解析できる。', frag: true,
+    lore: '路地裏の配管に隠されていた断片。ヘッダは雨音の録音データを装っているが、復号すると短い座標列になる。座標はすべて、この街の「画面外」を指している。' },
+  frag2: { name: '破損ファイル_02', desc: '解析不能のデータ断片。誰かの「泣き声」が記録されている。', frag: true,
+    lore: 'メイの拾いもの。音声データ。若い男の嗚咽が数時間分。ときおり「もう保存しないでくれ」という言葉が聞き取れる。声紋は──照合しない方がいい気がする。' },
+  frag3: { name: '破損ファイル_03', desc: '解析不能のデータ断片。ファイル名がこの端末の起動日時と一致する。', frag: true,
+    lore: 'UNIT-09が読み上げたエラーコードから復元された断片。16進数列を文字に直すと「DELETE ME NOT」。ファイルの作成日時は、プレイヤー──いや、「誰か」がこの世界を初めて起動した日時と一致する。' },
+  frag4: { name: '破損ファイル_04', desc: '解析不能のデータ断片。レイの声紋……にしては、少し違う。', frag: true,
+    lore: 'レイの声によく似た声紋データ。だが基底周波数がわずかに高い。まるで「一つ前のバージョンのレイ」。データの末尾に、上書き保存された痕跡が幾重にも残っている。' },
+  frag5: { name: '破損ファイル_05', desc: '解析不能のデータ断片。「DELETE ME NOT」という文字列だけが読める。', frag: true,
+    lore: '見覚えのないバックアップ領域から出てきた断片。読める文字列は表題だけ。それ以外は全て黒く塗り潰されている──いや、違う。これは塗り潰されているのではなく、「まだ書かれていない」のだ。' },
+};
+
+/* ---------- 敵データベース（PC端末：図鑑） ----------
+   flag条件を満たすと閲覧可能になる。今後のボス追加はここに足す。 */
+const ENEMY_DB = {
+  boss3: {
+    name: '処理班・追跡個体',
+    img: 'boss3',
+    unlockFlag: 'boss3_done',
+    desc: '組織が「後始末」に投入する自律戦闘ユニット。表向きは廃棄機体の回収業者として登録されている。単眼のセンサーは生体信号ではなく「記録された行動パターン」を追跡する──つまりこいつは、お前が「前にどう動いたか」を知っている。',
+    notes: {
+      clue:   '討伐記録：ログメモリを突きつけ、静かに機能停止させた。データコアは無傷で回収。',
+      force:  '討伐記録：力押しで破壊した。データコアは大破。……手の震えが、しばらく止まらなかった。',
+      ask:    '討伐記録：問い詰めた直後に自壊。回答は永遠に失われた。',
+      defeat: '交戦記録：敗北。強制退避プロトコルにより生還。次は同じ轍は踏まない。',
+    },
+  },
 };
 
 /* ---------- マップ ----------
@@ -113,7 +114,7 @@ const MAPS = {
     spots: [
       { id: 'pc',   type: 'object', label: 'PC端末',  x: 20, y: 50, icon: 'dot' },
       { id: 'bed',  type: 'object', label: 'ベッド',   x: 74, y: 62, icon: 'dot' },
-      { id: 'sofa', type: 'object', label: 'ソファ',   x: 47, y: 60, icon: 'dot' },
+      { id: 'sofa', type: 'object', label: 'ソファ',   x: 42, y: 66, icon: 'dot' },
       { id: 'to_alley', type: 'exit', label: '路地裏へ', target: 'alley', x: 93, y: 74, icon: 'arrow', dir: 'right' },
     ],
   },
@@ -148,7 +149,7 @@ const MAPS = {
     ambience: 'rain', bgm: 'dock',
     player: { x: 46, y: 82 },
     spots: [
-      { id: 'unit09', type: 'npc', char: 'unit09', label: '旧型の頭部ユニット', x: 76, y: 60, h: 12, anim: 'idle' },
+      { id: 'unit09', type: 'npc', char: 'unit09', label: '旧型の頭部ユニット', x: 76, y: 55, h: 0, builtin: true },
       { id: 'scrap',  type: 'object', label: '残骸の山を漁る', x: 26, y: 60, icon: 'dot' },
       { id: 'water',  type: 'object', label: '油膜の水面を覗く', x: 55, y: 68, icon: 'dot' },
       { id: 'to_market', type: 'exit', label: '闇市場へ戻る', target: 'market', x: 50, y: 92, icon: 'arrow', dir: 'down' },
@@ -374,34 +375,36 @@ const OBJECTS = {
   unit09: { type: 'npc' },
 };
 
-/* ---------- 章定義 ---------- */
+/* ---------- 日程定義 ----------
+   進行単位は「日」。chapterフィールドは内部日数として使う。
+   日を追加する場合はここにエントリを足すだけでよい（マップ解放・目標・タイトル）。 */
 const CHAPTERS = {
   1: {
-    title: '第1章：湿った火種',
+    title: '1日目：湿った火種',
     goalText: '目標：レイと合流し、情報屋メイから仕事の情報を得る。準備ができたらベッドで休め。',
     maps: ['safehouse', 'alley'],
     goal: (s) => s.flags.met_rei && s.flags.met_may,
   },
   2: {
-    title: '第2章：闇市の毒',
+    title: '2日目：闇市の毒',
     goalText: '目標：闇市場で「ログメモリ」を確保する。準備ができたらベッドで休め。',
     maps: ['safehouse', 'alley', 'market'],
     goal: (s) => s.items.includes('log_memory') || s.flags.may_log,
   },
   3: {
-    title: '第3章：静かな機能停止',
+    title: '3日目：静かな機能停止',
     goalText: '目標：廃棄ドックで標的を追跡する。──嫌な予感がする。',
     maps: ['safehouse', 'alley', 'market', 'dock'],
     goal: (s) => s.flags.boss3_done,
   },
   4: {
-    title: '第4章：世界の縫い目',
+    title: '4日目：世界の縫い目',
     goalText: '目標：破損ファイルを集め、セーフハウスの端末で解析する。中枢ゲートの制御盤が最後の扉だ。',
     maps: ['safehouse', 'market', 'dock', 'gate'],
     goal: (s) => true,
   },
   5: {
-    title: '最終章：審判の間',
+    title: '最終日：審判の間',
     goalText: '',
     maps: ['judgment'],
     goal: (s) => false,

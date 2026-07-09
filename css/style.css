@@ -436,6 +436,32 @@ img.px, .npc-img { image-rendering: pixelated; }
 .slot-no { color: var(--amber); margin-right: 1em; }
 .pc-menu { display: flex; flex-direction: column; gap: 1.2vh; align-items: flex-start; }
 
+/* ---- PC端末：図鑑・記録 ---- */
+.db-list { display: flex; flex-direction: column; gap: 1.2vh; }
+.db-row {
+  display: flex; gap: 1.6vh; align-items: flex-start;
+  border: 1px solid rgba(255,255,255,.14); padding: 1.2vh 1.4vh;
+  font-size: clamp(11px, 1.9vh, 16px);
+}
+.db-row.locked { opacity: .45; }
+.db-row.meta { border-color: rgba(40,224,255,.4); }
+.db-row.meta b { color: var(--cyan); }
+.db-img {
+  flex: 0 0 auto; width: 12vh; height: 14vh;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,43,74,.05); border: 1px solid rgba(255,43,74,.25);
+}
+.db-img img { max-width: 100%; max-height: 100%; }
+.db-unknown { color: #556; font-size: 4vh; }
+.db-body { flex: 1; }
+.db-body b { color: var(--red); letter-spacing: .1em; }
+.db-row.locked .db-body b { color: #667; }
+.db-note {
+  margin-top: .6em; padding: .5em .8em;
+  border-left: 2px solid var(--amber); color: #cba;
+  font-size: .85em;
+}
+
 /* ---- 設定メニュー ---- */
 .set-list { display: flex; flex-direction: column; gap: 1.6vh; }
 .set-row { display: flex; align-items: center; gap: 1.4em; font-size: clamp(11px, 1.9vh, 16px); }

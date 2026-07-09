@@ -3,5 +3,5 @@
 cd "$(dirname "$0")"
 rm -rf app
 mkdir -p app
-cp -r ../index.html ../css ../js app/
+cp -r ../index.html ../css ../js ../assets app/
 echo "synced -> desktop/app/"

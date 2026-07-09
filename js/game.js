@@ -138,9 +138,18 @@ const Engine = {
     return {
       chapter: 1, map: 'alley', mode: 'explore',
       params: { cigs: PARAM_DEF.cigs.init, dep: 0, cog: loop > 0 ? Math.min(loop * 4, 20) : 0, corr: 0 },
-      loop, items: ['access_log'], flags: {}, visitedDock: false,
+      loop, items: ['access_log'], itemLog: ['access_log'], flags: {}, visitedDock: false,
       finaleChoice: null,
     };
+  },
+
+  /* アイテム取得（所持品＋記録の両方に登録） */
+  gainItem(id) {
+    const s = this.s;
+    if (!s.items.includes(id)) s.items.push(id);
+    if (!s.itemLog) s.itemLog = [];
+    if (!s.itemLog.includes(id)) s.itemLog.push(id);
+    AudioEngine.item();
   },
 
   addParam(key, v) {
@@ -746,6 +755,7 @@ const Battle = {
 
   defeat() {
     this.log('アラヤは膝をついた。……視界が、砕ける。');
+    Engine.s.flags[`${this.st.boss.img}_method`] = 'defeat'; // 図鑑の交戦記録用
     Engine.addParam('corr', 25);
     setTimeout(() => {
       this.close();
@@ -769,6 +779,7 @@ const Battle = {
         choices: st.boss.choices.map(c => ({ text: c.text, require: c.require, _r: c.result })),
         onChoice: (c) => {
           const r = st.boss.results[c._r];
+          Engine.s.flags[`${st.boss.img}_method`] = c._r; // 図鑑の討伐記録用
           if (c._r === 'clue') Engine.s.items.splice(Engine.s.items.indexOf('log_memory'), 1);
           if (r.cog) Engine.addParam('cog', r.cog);
           if (r.corr) Engine.addParam('corr', r.corr);
@@ -827,7 +838,7 @@ const Flow = {
     if (c.corr) Engine.addParam('corr', c.corr);
     if (c.once) s.flags[c.once] = true;
     if (c.flag) s.flags[c.flag] = true;
-    if (c.give && !s.items.includes(c.give)) { s.items.push(c.give); AudioEngine.item(); }
+    if (c.give && !s.items.includes(c.give)) Engine.gainItem(c.give);
     if (c.require && c.consume) s.items.splice(s.items.indexOf(c.require), 1);
     UI.renderParams();
     const texts = d.branches[c.next] || ['……'];
@@ -851,7 +862,7 @@ const Flow = {
     if (!done && o.cost) Engine.addParam('cigs', -o.cost);
     const lines = (done ? o.afterText : o.text) || ['何もない。'];
     if (!done) {
-      if (o.give && !s.items.includes(o.give)) { s.items.push(o.give); AudioEngine.item(); }
+      if (o.give && !s.items.includes(o.give)) Engine.gainItem(o.give);
       if (o.cigs) Engine.addParam('cigs', o.cigs);
       if (o.cog) Engine.addParam('cog', o.cog);
       if (o.once) s.flags[o.once] = true;
@@ -893,7 +904,7 @@ const Flow = {
     }
     EventView.show([{ speaker: '', text: goal ? '今日はもう休もう。' : 'まだやり残したことがある気がする。それでも眠るか？' }], {
       choices: [
-        { text: '眠る（次の章へ）', _a: 'sleep' },
+        { text: '眠る（次の日へ）', _a: 'sleep' },
         { text: 'まだ動く', _a: 'no' },
       ],
       onChoice: (c) => {
@@ -948,7 +959,7 @@ const Flow = {
       { speaker: '', text: '制御盤に手を置く。認証は──通った。最初から、お前を待っていたかのように。' },
     ], {
       choices: [
-        { text: '中枢へ進む（最終章・後戻りはできない）', _a: 'go' },
+        { text: '中枢へ進む（最終日・後戻りはできない）', _a: 'go' },
         { text: '引き返す', _a: 'no' },
       ],
       onChoice: (c) => { if (c._a === 'go') this.enterFinale(); else EventView.finish(); },
@@ -1108,6 +1119,59 @@ const Modal = {
     });
   },
 
+  /* ---- PC端末：敵データベース（図鑑） ---- */
+  enemyDb() {
+    const s = Engine.s;
+    const rows = Object.entries(ENEMY_DB).map(([key, e]) => {
+      const known = s.flags[e.unlockFlag];
+      if (!known) {
+        return `<div class="db-row locked">
+          <div class="db-img"><span class="db-unknown">?</span></div>
+          <div class="db-body"><b>？？？</b><div class="it-desc">未遭遇のターゲット。データがない。</div></div>
+        </div>`;
+      }
+      const method = s.flags[`${e.img}_method`];
+      const note = (method && e.notes[method]) || '';
+      const imgUrl = ASSETS.enemy[e.img];
+      return `<div class="db-row">
+        <div class="db-img">${imgUrl ? `<img class="px db-enemy" data-eimg="${imgUrl}" draggable="false">` : '<span class="db-unknown">▓</span>'}</div>
+        <div class="db-body">
+          <b>${e.name}</b>
+          <div class="it-desc">${e.desc}</div>
+          ${note ? `<div class="db-note">${note}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    this.open(`<h3>敵データベース</h3><div class="db-list">${rows}</div>
+      <div class="dim small">──記録された脅威：${Object.values(ENEMY_DB).filter(e => s.flags[e.unlockFlag]).length} / ${Object.keys(ENEMY_DB).length}</div>`);
+    document.querySelectorAll('.db-enemy').forEach(img => {
+      const u = img.dataset.eimg;
+      if (WHITE_KEY_URLS.has(u)) SpriteKey.apply(img, u);
+      else img.src = u;
+    });
+  },
+
+  /* ---- PC端末：アイテム記録（入手履歴と詳細ロア） ---- */
+  itemRecords() {
+    const s = Engine.s;
+    const log = s.itemLog || s.items;
+    const rows = Object.entries(ITEMS).map(([id, it]) => {
+      const found = log.includes(id);
+      if (!found) {
+        return `<div class="db-row locked"><div class="db-body"><b>？？？</b><div class="it-desc">未取得の記録。</div></div></div>`;
+      }
+      const holding = s.items.includes(id);
+      return `<div class="db-row${it.meta || it.frag ? ' meta' : ''}">
+        <div class="db-body">
+          <b>${it.name}</b>${holding ? '' : ' <span class="dim small">（手元にない）</span>'}
+          <div class="it-desc">${it.lore || it.desc}</div>
+        </div>
+      </div>`;
+    }).join('');
+    this.open(`<h3>アイテム記録</h3><div class="db-list">${rows}</div>
+      <div class="dim small">──記録済み：${Object.keys(ITEMS).filter(id => log.includes(id)).length} / ${Object.keys(ITEMS).length}</div>`);
+  },
+
   settings() {
     const d = Settings.data;
     const slider = (key, label) => `
@@ -1168,10 +1232,14 @@ const Modal = {
       <div class="pc-menu">
         <button class="mini-btn" id="pc-save">セーブ</button>
         <button class="mini-btn" id="pc-load">ロード</button>
+        <button class="mini-btn" id="pc-enemy">敵データベース</button>
+        <button class="mini-btn" id="pc-records">アイテム記録</button>
         ${analyzeRow}${legacyRow}
       </div>`);
     $('#pc-save').onclick = () => { this.close(); this.saveLoad('save'); };
     $('#pc-load').onclick = () => { this.close(); this.saveLoad('load'); };
+    $('#pc-enemy').onclick = () => { AudioEngine.click(); this.close(); this.enemyDb(); };
+    $('#pc-records').onclick = () => { AudioEngine.click(); this.close(); this.itemRecords(); };
     const an = $('#pc-analyze');
     if (an) an.onclick = () => {
       this.close();
@@ -1188,7 +1256,7 @@ const Modal = {
     if (lg) lg.onclick = () => {
       this.close();
       s.flags.frag5_taken = true;
-      if (!s.items.includes('frag5')) s.items.push('frag5');
+      Engine.gainItem('frag5');
       Engine.addParam('cog', 8);
       AudioEngine.glitch();
       EventView.show([
