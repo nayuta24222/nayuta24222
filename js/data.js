@@ -20,7 +20,7 @@ const ASSETS = {
   /* ミニキャラドット絵：キャラごとに variant（マップ別ポーズ差分）を持てる。
      'default' は必須。マップ側 spot.variant が無い/未生成なら default にフォールバック。 */
   sprite: {
-    araya: { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/74af775de_generated_image.png' },
+    araya: { default: 'https://d2ol7oe51mr4n9.cloudfront.net/user_3GH3iYXZkdFQ8b4aMO8WEGXL0XE/826c0200-dba3-4913-8b1c-8cb9c1665afd.png' }, // 正式採用版（ユーザー承認済み・透過）
     rei:   { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f11766e8c_generated_image.png' },
     may:   { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/6f844622a_generated_image.png' },
     siggy: { default: 'https://media.base44.com/images/public/6a4f947a6dc8604874b7afa1/f0d21724e_generated_image.png' },

@@ -46,6 +46,23 @@ URL一覧は `js/data.js` の `ASSETS` に集約。ローカル化する場合�
 未生成キャラ（サク・ケイ・UNIT-09）は、演出としてシルエット＋グリッチ表現で描画しています
 （UNIT-09は廃棄ドック背景に描き込まれた頭部ユニットをホットスポット化）。
 
+## デスクトップ版（ダウンロード配布用）
+
+Electronでスタンドアロンのソフトとして起動・配布できます。
+
+```bash
+cd desktop
+npm install          # 初回のみ（electron / electron-builder）
+npm start            # そのまま起動して動作確認
+
+# 配布用ビルド（Windows: ポータブルexe + インストーラ）
+./sync-app.sh        # ゲーム本体を desktop/app/ に同期
+npm run dist:win     # → desktop/dist/ に出力（mac: dist:mac / linux: dist:linux）
+```
+
+※画像アセットはCDN参照のため、現状はデスクトップ版でもネット接続が必要です。
+完全オフライン化する場合は assets/ にダウンロードして `js/data.js` のURLを差し替えてください。
+
 ## ファイル構成
 
 ```

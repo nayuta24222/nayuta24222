@@ -1,0 +1,40 @@
+{
+  "name": "delete-me-not",
+  "productName": "Delete Me Not.",
+  "version": "0.1.0",
+  "description": "最下層・記憶改変メタサスペンスRPG",
+  "main": "main.js",
+  "author": "nayuta24222",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.nayuta24222.deletemenot",
+    "productName": "Delete Me Not",
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": ["portable", "nsis"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  }
+}

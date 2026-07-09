@@ -68,7 +68,7 @@ img.px, .npc-img { image-rendering: pixelated; }
   transform: translate(-50%, -100%);
   pointer-events: none;
 }
-.sprite.player img { height: 15vh; filter: drop-shadow(0 4px 6px rgba(0,0,0,.8)); }
+.sprite.player img { height: 24vh; filter: drop-shadow(0 4px 6px rgba(0,0,0,.8)); }
 
 .spot {
   position: absolute; z-index: 25;
