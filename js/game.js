@@ -168,16 +168,18 @@ const UI = {
 
   /* --- 違和感レベルに応じたメタ演出 --- */
   applyMetaFx() {
-    const cog = Engine.s ? Engine.s.params.cog : 0;
+    const s = Engine.s;
+    const cog = s ? s.params.cog : 0;
     AudioEngine.setDistortion(cog);
     this.root.classList.toggle('meta-2', cog >= 50 && cog < 100);
     // レベル3：セーブUIの文字化け
     $('#btn-save').textContent = cog >= 80 ? '████' : 'SAVE';
     $('#btn-load').textContent = cog >= 80 ? '████' : 'LOAD';
-    // レベル4：第5章はUI消失
-    const hide = Engine.s && Engine.s.chapter >= 5;
+    // タイトル/エンディング中は非表示。レベル4：第5章はUI消失
+    const titleActive = $('#title-layer').classList.contains('active');
+    const hide = !s || titleActive || s.chapter >= 5;
     $('#hud').style.display = hide ? 'none' : '';
-    if (!hide && Engine.s && cog >= 50) this.randomShakeTick();
+    if (!hide && cog >= 50) this.randomShakeTick();
   },
   randomShakeTick() {
     if (this._shaking) return;
@@ -984,6 +986,7 @@ const Title = {
     const hasSave = Engine.readSlots().some(x => x);
     const layer = $('#title-layer');
     layer.className = 'active' + (ed5 ? ' ed5-title' : '');
+    $('#hud').style.display = 'none';
     layer.innerHTML = `
       <div class="tt-bg"></div>
       <div class="tt-rain"></div>
