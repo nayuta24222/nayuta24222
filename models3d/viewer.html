@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>3D Map Viewer</title>
+<style>
+  html,body{margin:0;height:100%;background:#07060a;overflow:hidden}
+  #hud{position:fixed;left:12px;top:10px;color:#e888c8;font:12px monospace;
+       text-shadow:0 0 6px #f0f;z-index:9}
+  canvas{display:block}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"./lib/three.module.js",
+  "three/addons/loaders/GLTFLoader.js":"./lib/loaders/GLTFLoader.js",
+  "three/addons/controls/OrbitControls.js":"./lib/controls/OrbitControls.js"
+}}
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const params = new URLSearchParams(location.search);
+const model = params.get('m') || 'observation_tower.glb';
+document.getElementById('hud').textContent = model;
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07060a);
+scene.fog = new THREE.FogExp2(0x07060a, 0.018);
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, .1, 200);
+// 元画像に合わせた等角風アングル(斜め上から)
+camera.position.set(
+  parseFloat(params.get('cx') ?? 5.5),
+  parseFloat(params.get('cy') ?? 9.5),
+  parseFloat(params.get('cz') ?? 14.5));
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.2, 0);
+controls.update();
+
+// ライティング: 暗所+ネオン雰囲気
+scene.add(new THREE.AmbientLight(0x333a55, 1.1));
+const key = new THREE.DirectionalLight(0x8899cc, 1.2);
+key.position.set(6, 12, 8); scene.add(key);
+const pink = new THREE.PointLight(0xff2d88, 60, 18); pink.position.set(0, 4.5, -4.5); scene.add(pink);
+const pink2 = new THREE.PointLight(0xff2d88, 30, 12); pink2.position.set(2.5, 2, 1.5); scene.add(pink2);
+const blue = new THREE.PointLight(0x3d7dff, 40, 14); blue.position.set(-5, 3.5, 1); scene.add(blue);
+const red = new THREE.PointLight(0xff2020, 15, 8); red.position.set(5.5, 3, 2.5); scene.add(red);
+
+new GLTFLoader().load(model, (g)=>{
+  scene.add(g.scene);
+  window.__loaded = true;
+}, undefined, (e)=>{ document.getElementById('hud').textContent = 'ERR '+e; });
+
+renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene, camera); });
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
