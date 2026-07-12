@@ -20,8 +20,23 @@ JP_FONT = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
 
 
 # ---------------------------------------------------------------- materials
+def _pot(img):
+    """テクスチャを2のべき乗サイズへリサイズ(NPOTでレンダラが崩れる対策)。"""
+    if img is None:
+        return None
+    def p2(v):
+        return max(32, min(1024, 1 << max(5, int(round(math.log2(v))))))
+    w, h = img.size
+    nw, nh = p2(w), p2(h)
+    if (nw, nh) != (w, h):
+        img = img.resize((nw, nh), Image.LANCZOS)
+    return img
+
+
 def mat(name, color, metallic=0.2, rough=0.85, emissive=None, tex=None,
         emissive_tex=None):
+    tex = _pot(tex)
+    emissive_tex = _pot(emissive_tex)
     m = PBRMaterial(
         name=name,
         baseColorFactor=[*color, 1.0] if len(color) == 3 else list(color),

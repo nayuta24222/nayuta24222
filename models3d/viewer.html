@@ -47,7 +47,10 @@ camera.position.set(
   parseFloat(params.get('cz') ?? 14.5));
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1.2, 0);
+controls.target.set(
+  parseFloat(params.get('tx') ?? 0),
+  parseFloat(params.get('ty') ?? 1.2),
+  parseFloat(params.get('tz') ?? 0));
 controls.update();
 
 // ライティング: 暗所+ネオン雰囲気
