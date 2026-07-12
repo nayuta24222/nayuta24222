@@ -232,9 +232,9 @@ def neon_sign(scene, text, w, h, pos, rot=None, fg=(255, 60, 150),
               tex_h=256):
     """枠付き発光看板を配置。板ポリ(発光テクスチャ)+背面フレーム箱。"""
     ar = max(1, int(tex_h * (w / h)))
-    tex = neon_sign_tex(text, fg=fg, bg=bg, size=(ar, tex_h) if not vertical
-                        else (tex_h, ar), sub=sub, sub_fg=sub_fg,
-                        vertical=vertical, font_scale=font_scale)
+    tex = neon_sign_tex(text, fg=fg, bg=bg, size=(ar, tex_h), sub=sub,
+                        sub_fg=sub_fg, vertical=vertical,
+                        font_scale=font_scale)
     m = mat(name or f"sign_{text[:6]}", (1, 1, 1), metallic=0.0, rough=0.5,
             emissive=(1.6, 1.6, 1.6), tex=tex, emissive_tex=tex)
     fm = frame_mat or M("frame_black", (0.022, 0.022, 0.030))
