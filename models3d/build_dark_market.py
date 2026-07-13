@@ -25,7 +25,7 @@ import random as _rnd
 
 from kit import (M, std_mats, mat, tex_mat, box, cyl, cone, sphere, quad,
                  disc, T, R, neon_sign, tile_floor_tex, wall_tex,
-                 poster_tex, lamp, barrel, crate, pipe_run, export, _font)
+                 poster_tex, lamp, barrel, crate, pipe_run, decay_scatter, export, _font)
 
 std_mats()
 S = trimesh.Scene()
@@ -322,6 +322,11 @@ disc(S, 0.5, (-1.2, 0.012, 3.6), tex_mat("drain", grate_tex(),
 # 手前の残り物
 crate(S, (2.2, 0, 3.9), size=(0.6, 0.45, 0.6), rot_y=26)
 barrel(S, (-4.4, 0, 4.3), r=0.28, h=0.8)
+
+# 退廃演出
+decay_scatter(S, (-6.6, 6.6), (-5.5, 5.5), seed=17, n_rubble=30,
+              n_trash=18, n_stain=14, n_puddle=10,
+              avoid=[(2.6, -1.6, 1.6), (-1.2, 3.6, 0.7)])
 
 out = os.path.join(os.path.dirname(__file__), "dark_market.glb")
 size = export(S, out)

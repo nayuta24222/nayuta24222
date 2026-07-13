@@ -27,7 +27,7 @@ import random as _rnd
 
 from kit import (M, std_mats, mat, tex_mat, box, cyl, cone, sphere, quad,
                  disc, T, R, neon_sign, screen_tex, tile_floor_tex, wall_tex,
-                 poster_tex, lamp, barrel, crate, pipe_run, export, _font)
+                 poster_tex, lamp, barrel, crate, pipe_run, decay_scatter, export, _font)
 
 std_mats()
 S = trimesh.Scene()
@@ -414,6 +414,11 @@ cyl(S, 0.2, 0.5, (1.4, 0.25, 4.9), M("metal_rust", (0, 0, 0)), sections=14)
 # 赤色灯(右壁の棚上)
 box(S, (0.14, 0.18, 0.14), (5.6, 3.6, 3.4), M("neon_red", (0, 0, 0)))
 box(S, (0.2, 0.06, 0.2), (5.6, 3.72, 3.4), M("frame_black", (0, 0, 0)))
+
+# 退廃演出
+decay_scatter(S, (-5.6, 5.0), (-4.8, 5.6), seed=13, n_rubble=16,
+              n_trash=14, n_stain=12, n_puddle=4,
+              avoid=[(0.6, -0.6, 1.8), (2.9, 4.4, 0.9)])
 
 out = os.path.join(os.path.dirname(__file__), "records_room.glb")
 size = export(S, out)

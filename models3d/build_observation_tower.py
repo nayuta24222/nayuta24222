@@ -29,7 +29,7 @@ import trimesh
 from kit import (M, std_mats, mat, tex_mat, box, cyl, cone, sphere, quad,
                  T, R, neon_sign, screen_tex, led_panel_tex, tile_floor_tex,
                  wall_tex, stripe_tex, poster_tex, mugshot_tex, lamp, barrel,
-                 crate, pipe_run, fence_chainlink, export, _font)
+                 crate, pipe_run, fence_chainlink, decay_scatter, export, _font)
 
 std_mats()
 S = trimesh.Scene()
@@ -456,6 +456,10 @@ pipe_run(S, (-2.0, 4.6, -5.85), (2.0, 5.2, -5.85), r=0.02, joints=False)
 pipe_run(S, (-5.85, 5.3, -5.0), (-5.85, 4.5, -1.5), r=0.02, joints=False)
 
 # ---------------------------------------------------------------- 出力
+# 退廃演出: 瓦礫・ゴミ・シミ・水たまり
+decay_scatter(S, (-5.4, 5.4), (-4.8, 5.4), seed=3,
+              avoid=[(3.3, 2.7, 1.6), (0.6, 0.6, 1.2)])
+
 out = os.path.join(os.path.dirname(__file__), "observation_tower.glb")
 size = export(S, out)
 print(f"OK observation_tower.glb {size/1e6:.2f} MB, "

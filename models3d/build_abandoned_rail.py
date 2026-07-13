@@ -26,7 +26,7 @@ import trimesh
 from kit import (M, std_mats, mat, tex_mat, box, cyl, cone, sphere, quad,
                  disc, T, R, neon_sign, tile_floor_tex, wall_tex, stripe_tex,
                  poster_tex, timetable_tex, lamp, barrel, crate, pipe_run,
-                 fence_chainlink, export, _font)
+                 fence_chainlink, decay_scatter, export, _font)
 
 std_mats()
 S = trimesh.Scene()
@@ -392,6 +392,10 @@ for _ in range(26):
 cyl(S, 0.08, 4.6, (7.0, 2.3, -0.5), M("pipe", (0, 0, 0)))
 pipe_run(S, (7.0, 4.5, -0.5), (4.5, 5.3, -6.1), r=0.02, joints=False)
 pipe_run(S, (-7.3, 4.4, -6.0), (-2.0, 3.9, -6.1), r=0.02, joints=False)
+
+# 退廃演出
+decay_scatter(S, (-7.0, 7.0), (-5.5, 6.0), seed=7, n_rubble=34,
+              n_trash=16, n_stain=14, n_puddle=10)
 
 out = os.path.join(os.path.dirname(__file__), "abandoned_rail.glb")
 size = export(S, out)

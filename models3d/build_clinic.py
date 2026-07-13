@@ -25,7 +25,7 @@ import trimesh
 
 from kit import (M, std_mats, mat, tex_mat, box, cyl, cone, sphere, quad,
                  disc, T, R, neon_sign, screen_tex, tile_floor_tex, wall_tex,
-                 poster_tex, lamp, barrel, crate, pipe_run, export, _font)
+                 poster_tex, lamp, barrel, crate, pipe_run, decay_scatter, export, _font)
 
 std_mats()
 S = trimesh.Scene()
@@ -345,6 +345,11 @@ gt = grate_tex()
 for (gx, gz) in [(0.1, -0.9), (-1.7, 3.0)]:
     disc(S, 0.55, (gx, 0.012, gz),
          tex_mat("grate", gt, metallic=0.6, rough=0.6))
+
+# 退廃演出
+decay_scatter(S, (-5.2, 5.2), (-4.6, 5.2), seed=11, n_rubble=18,
+              n_trash=10, n_stain=12,
+              avoid=[(0.1, -0.9, 0.8), (-1.7, 3.0, 0.8)])
 
 out = os.path.join(os.path.dirname(__file__), "clinic.glb")
 size = export(S, out)

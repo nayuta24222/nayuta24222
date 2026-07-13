@@ -14,7 +14,7 @@ import trimesh
 from trimesh.transformations import rotation_matrix, translation_matrix
 from trimesh.visual.material import PBRMaterial
 from trimesh.visual.texture import TextureVisuals
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 
 JP_FONT = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
 
@@ -63,16 +63,19 @@ def M(name, *a, **kw):
 
 
 def std_mats():
-    """全マップ共通の基本マテリアル群。"""
-    M("metal_dark",   (0.055, 0.060, 0.080), metallic=0.75, rough=0.55)
-    M("metal_mid",    (0.100, 0.105, 0.130), metallic=0.70, rough=0.60)
-    M("metal_rust",   (0.170, 0.110, 0.085), metallic=0.35, rough=0.95)
-    M("frame_black",  (0.022, 0.022, 0.030), metallic=0.60, rough=0.70)
-    M("concrete",     (0.090, 0.090, 0.110), metallic=0.05, rough=1.00)
-    M("wood_dark",    (0.140, 0.095, 0.065), metallic=0.02, rough=0.95)
-    M("cloth_dark",   (0.080, 0.060, 0.075), metallic=0.00, rough=1.00)
-    M("pipe",         (0.075, 0.078, 0.095), metallic=0.85, rough=0.45)
-    M("cable",        (0.030, 0.030, 0.038), metallic=0.10, rough=0.90)
+    """全マップ共通の基本マテリアル群。退廃世界観: 金属は錆びてくすみ、
+    彩度低め・茶系に寄せる。"""
+    M("metal_dark",   (0.058, 0.054, 0.058), metallic=0.55, rough=0.75)
+    M("metal_mid",    (0.105, 0.095, 0.090), metallic=0.50, rough=0.80)
+    M("metal_rust",   (0.190, 0.115, 0.075), metallic=0.25, rough=1.00)
+    M("frame_black",  (0.026, 0.024, 0.026), metallic=0.45, rough=0.85)
+    M("concrete",     (0.095, 0.090, 0.095), metallic=0.03, rough=1.00)
+    M("wood_dark",    (0.130, 0.090, 0.060), metallic=0.02, rough=1.00)
+    M("cloth_dark",   (0.080, 0.062, 0.070), metallic=0.00, rough=1.00)
+    M("pipe",         (0.085, 0.075, 0.070), metallic=0.60, rough=0.70)
+    M("cable",        (0.030, 0.030, 0.036), metallic=0.10, rough=0.95)
+    M("rubble",       (0.105, 0.098, 0.092), metallic=0.02, rough=1.00)
+    M("trash_paper",  (0.34, 0.31, 0.26), metallic=0.0, rough=1.00)
     # 発光体
     M("neon_pink",  (1.00, 0.25, 0.62), emissive=(1.00, 0.15, 0.55), rough=0.4)
     M("neon_blue",  (0.25, 0.65, 1.00), emissive=(0.15, 0.55, 1.00), rough=0.4)
@@ -165,79 +168,197 @@ def _font(size, path=JP_FONT):
     return ImageFont.truetype(path, size)
 
 
+def grunge(img, seed=1, strength=0.55, streaks=True, dust=True):
+    """汚し処理: 黒ずみシミ+錆だれの縦筋+土埃。全テクスチャに適用可能。"""
+    rng = random.Random(seed)
+    W, H = img.size
+    # 黒ずみシミ
+    ov = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(ov)
+    for _ in range(int(120 * strength)):
+        x, y = rng.randint(0, W), rng.randint(0, H)
+        r = rng.randint(4, int(20 + 60 * strength))
+        d.ellipse([x - r, y - r, x + r, y + r],
+                  fill=rng.randint(25, 110))
+    ov = ov.filter(ImageFilter.GaussianBlur(max(2, W // 160)))
+    dark = Image.new("RGB", (W, H), (9, 8, 7))
+    img = Image.composite(dark, img,
+                          ov.point(lambda v: int(v * strength)))
+    # 錆だれ(上から下へ垂れる筋)
+    if streaks:
+        st = Image.new("L", (W, H), 0)
+        ds = ImageDraw.Draw(st)
+        for _ in range(int(26 * strength)):
+            x = rng.randint(0, W)
+            y0 = rng.randint(0, H // 2)
+            ln = rng.randint(H // 8, H // 2)
+            ds.line([(x, y0), (x + rng.randint(-5, 5), y0 + ln)],
+                    fill=rng.randint(40, 110), width=rng.randint(2, 6))
+            ds.ellipse([x - 5, y0 - 4, x + 5, y0 + 4],
+                       fill=rng.randint(60, 120))
+        st = st.filter(ImageFilter.GaussianBlur(2))
+        rust = Image.new("RGB", (W, H), (64, 40, 22))
+        img = Image.composite(rust, img, st)
+    # 土埃(下辺・角に溜まる)
+    if dust:
+        du = Image.new("L", (W, H), 0)
+        dd = ImageDraw.Draw(du)
+        for _ in range(int(60 * strength)):
+            x = rng.randint(0, W)
+            y = H - abs(int(rng.gauss(0, H * 0.18)))
+            r = rng.randint(6, 30)
+            dd.ellipse([x - r, y - r // 2, x + r, y + r // 2],
+                       fill=rng.randint(20, 70))
+        du = du.filter(ImageFilter.GaussianBlur(6))
+        dusty = Image.new("RGB", (W, H), (52, 44, 34))
+        img = Image.composite(dusty, img, du)
+    return img
+
+
+def age_paper(img, seed=1, strength=0.7):
+    """張り紙の経年劣化: 黄ばみ・シミ・破れ縁・めくれ角・テープ。"""
+    rng = random.Random(seed)
+    W, H = img.size
+    # 黄ばみ(乗算)
+    tint = Image.new("RGB", (W, H), (232, 210, 168))
+    img = Image.blend(img, ImageChops.multiply(img, tint), 0.85)
+    d = ImageDraw.Draw(img)
+    # 水シミ
+    for _ in range(int(8 * strength)):
+        x, y = rng.randint(0, W), rng.randint(0, H)
+        r = rng.randint(W // 10, W // 3)
+        for k in range(3):
+            d.ellipse([x - r + k * 2, y - r // 2 + k, x + r - k * 2,
+                       y + r // 2 - k],
+                      outline=(150 - k * 12, 128 - k * 10, 95 - k * 8))
+    # 破れた縁(黒く欠けさせる=背景色で塗る)
+    edge = (12, 11, 12)
+    for _ in range(int(14 * strength)):
+        side = rng.randint(0, 3)
+        if side == 0:
+            x, y = rng.randint(0, W), 0
+        elif side == 1:
+            x, y = rng.randint(0, W), H
+        elif side == 2:
+            x, y = 0, rng.randint(0, H)
+        else:
+            x, y = W, rng.randint(0, H)
+        pts = [(x + rng.randint(-14, 14), y + rng.randint(-10, 10))
+               for _ in range(5)]
+        d.polygon(pts, fill=edge)
+    # めくれ角(暗い三角)
+    cw = rng.randint(W // 8, W // 4)
+    corner = rng.choice([(0, 0, 1, 1), (W, 0, -1, 1), (0, H, 1, -1),
+                         (W, H, -1, -1)])
+    cx, cy, sx, sy = corner
+    d.polygon([(cx, cy), (cx + sx * cw, cy), (cx, cy + sy * cw)], fill=edge)
+    d.polygon([(cx + sx * cw, cy), (cx, cy + sy * cw),
+               (cx + sx * cw * 0.55, cy + sy * cw * 0.55)],
+              fill=(168, 152, 120))
+    # セロテープ
+    for _ in range(2):
+        tx = rng.randint(0, W - 40)
+        d.rectangle([tx, 0, tx + rng.randint(24, 44), rng.randint(10, 18)],
+                    fill=(185, 178, 158))
+    return img
+
+
 def neon_sign_tex(text, fg=(255, 60, 150), bg=(8, 6, 12), size=(1024, 256),
                   border=True, border_col=None, sub=None, sub_fg=None,
-                  vertical=False, font_scale=0.62):
-    """発光看板テクスチャ。text本体+任意の副文(sub)。グロー付き。"""
-    img = Image.new("RGB", size, bg)
-    d = ImageDraw.Draw(img)
+                  vertical=False, font_scale=0.62, flicker=True, seed=None):
+    """発光看板テクスチャ。退廃仕様: 文字ごとに管が死んでいたり弱っていたり、
+    枠の管も途切れ、パネルは煤けている。"""
+    rng = random.Random(seed if seed is not None
+                        else sum(ord(c) for c in text) * 7 + len(text))
     W, H = size
-    if vertical:
-        fs = int(W * font_scale)
-        f = _font(fs)
-        total = len(text)
-        pad = (H - fs * total) // (total + 1)
-        glow = Image.new("RGB", size, (0, 0, 0))
-        gd = ImageDraw.Draw(glow)
-        y = pad
-        for ch in text:
-            for dd in (gd, d):
-                bbox = dd.textbbox((0, 0), ch, font=f)
-                x = (W - (bbox[2] - bbox[0])) // 2 - bbox[0]
-                dd.text((x, y), ch, font=f, fill=fg)
-            y += fs + pad
-    else:
-        fs = int(H * (font_scale if sub is None else font_scale * 0.82))
-        f = _font(fs)
-        glow = Image.new("RGB", size, (0, 0, 0))
-        gd = ImageDraw.Draw(glow)
-        bbox = d.textbbox((0, 0), text, font=f)
-        x = (W - (bbox[2] - bbox[0])) // 2 - bbox[0]
-        y = (H - (bbox[3] - bbox[1])) // 2 - bbox[1]
-        if sub:
-            y = int(H * 0.08)
-        for dd in (gd, d):
-            dd.text((x, y), text, font=f, fill=fg)
-        if sub:
-            f2 = _font(int(H * 0.18))
-            bbox2 = d.textbbox((0, 0), sub, font=f2)
-            x2 = (W - (bbox2[2] - bbox2[0])) // 2 - bbox2[0]
-            y2 = int(H * 0.72)
-            for dd in (gd, d):
-                dd.text((x2, y2), sub, font=f2, fill=sub_fg or fg)
-    blur = glow.filter(ImageFilter.GaussianBlur(size[1] // 24))
-    img = Image.blend(img, Image.blend(img, blur, 0.9), 0.55)
+    img = Image.new("RGB", size, bg)
+
+    def dim(c, f_):
+        return tuple(int(v * f_) for v in c)
+
+    def levels(n):
+        lv = []
+        for _ in range(n):
+            r = rng.random()
+            if flicker and r < 0.16:
+                lv.append(rng.uniform(0.08, 0.25))    # 死にかけの管
+            elif flicker and r < 0.36:
+                lv.append(rng.uniform(0.5, 0.75))     # 弱った管
+            else:
+                lv.append(1.0)
+        if n and max(lv) < 0.5:
+            lv[rng.randrange(n)] = 1.0
+        return lv
+
+    glow = Image.new("RGB", size, (0, 0, 0))
+    gd = ImageDraw.Draw(glow)
     d = ImageDraw.Draw(img)
-    # 再描画してシャープに
+
+    # 文字位置と輝度を先に決め、グロー→シャープの順に2回描く
+    chars = []   # (ch, x, y, font, color)
     if vertical:
         fs = int(W * font_scale)
         f = _font(fs)
         total = len(text)
         pad = (H - fs * total) // (total + 1)
+        lv = levels(total)
         y = pad
-        for ch in text:
+        for i, ch in enumerate(text):
             bbox = d.textbbox((0, 0), ch, font=f)
             x = (W - (bbox[2] - bbox[0])) // 2 - bbox[0]
-            d.text((x, y), ch, font=f, fill=fg)
+            chars.append((ch, x, y, f, dim(fg, lv[i])))
             y += fs + pad
     else:
         fs = int(H * (font_scale if sub is None else font_scale * 0.82))
         f = _font(fs)
+        widths = [d.textlength(ch, font=f) for ch in text]
+        total_w = sum(widths)
         bbox = d.textbbox((0, 0), text, font=f)
-        x = (W - (bbox[2] - bbox[0])) // 2 - bbox[0]
+        x = (W - total_w) // 2
         y = (H - (bbox[3] - bbox[1])) // 2 - bbox[1]
         if sub:
             y = int(H * 0.08)
-        d.text((x, y), text, font=f, fill=fg)
+        lv = levels(len(text))
+        for i, ch in enumerate(text):
+            chars.append((ch, int(x), y, f, dim(fg, lv[i])))
+            x += widths[i]
         if sub:
             f2 = _font(int(H * 0.18))
             bbox2 = d.textbbox((0, 0), sub, font=f2)
             x2 = (W - (bbox2[2] - bbox2[0])) // 2 - bbox2[0]
-            d.text((x2, int(H * 0.72)), sub, font=f2, fill=sub_fg or fg)
+            sub_lv = 1.0 if not flicker or rng.random() > 0.3 else 0.4
+            chars.append((sub, x2, int(H * 0.72), f2,
+                          dim(sub_fg or fg, sub_lv)))
+    for (ch, x, y, f_, c) in chars:
+        gd.text((x, y), ch, font=f_, fill=c)
+    blur = glow.filter(ImageFilter.GaussianBlur(H // 24 if not vertical
+                                                else W // 24))
+    img = Image.blend(img, Image.blend(img, blur, 0.9), 0.55)
+    d = ImageDraw.Draw(img)
+    for (ch, x, y, f_, c) in chars:
+        d.text((x, y), ch, font=f_, fill=c)
+
     if border:
         bc = border_col or fg
-        for i in range(3):
-            d.rectangle([6 + i, 6 + i, W - 7 - i, H - 7 - i], outline=bc)
+        # 枠の管も部分的に死んでいる: 辺を分割して描き、所々消す
+        edges = [((6, 6), (W - 7, 6)), ((W - 7, 6), (W - 7, H - 7)),
+                 ((W - 7, H - 7), (6, H - 7)), ((6, H - 7), (6, 6))]
+        for (p0, p1) in edges:
+            segs = 6
+            for si in range(segs):
+                r = rng.random()
+                if flicker and r < 0.18:
+                    continue                       # 消えた区間
+                f_ = 0.45 if (flicker and r < 0.38) else 1.0
+                t0, t1 = si / segs, (si + 1) / segs
+                a = (p0[0] + (p1[0] - p0[0]) * t0,
+                     p0[1] + (p1[1] - p0[1]) * t0)
+                b = (p0[0] + (p1[0] - p0[0]) * t1,
+                     p0[1] + (p1[1] - p0[1]) * t1)
+                d.line([a, b], fill=dim(bc, f_), width=3)
+    # パネルの煤け
+    img = grunge(img, seed=rng.randint(0, 9999), strength=0.3,
+                 streaks=True, dust=False)
     return img
 
 
@@ -330,16 +451,33 @@ def tile_floor_tex(size=(1024, 1024), tile=64, base=(16, 18, 26),
     W, H = size
     for ty in range(0, H, tile):
         for tx in range(0, W, tile):
-            v = rng.uniform(0.78, 1.15)
+            v = rng.uniform(0.72, 1.15)
             c = tuple(min(255, int(b * v)) for b in base)
             d.rectangle([tx + 1, ty + 1, tx + tile - 2, ty + tile - 2],
                         fill=c)
-            if rng.random() < 0.12:  # 汚れ
+            r = rng.random()
+            if r < 0.05:            # 剥がれ落ちたタイル(下地の土)
+                d.rectangle([tx + 1, ty + 1, tx + tile - 2, ty + tile - 2],
+                            fill=(24, 19, 14))
+                for _ in range(5):
+                    px_ = tx + rng.randint(3, tile - 6)
+                    py_ = ty + rng.randint(3, tile - 6)
+                    d.ellipse([px_, py_, px_ + rng.randint(2, 7),
+                               py_ + rng.randint(2, 5)], fill=(38, 32, 24))
+            elif r < 0.17:          # ひび割れたタイル
+                x0, y0 = tx + rng.randint(2, tile - 4), ty + 2
+                pts = [(x0, y0)]
+                while pts[-1][1] < ty + tile - 4:
+                    pts.append((pts[-1][0] + rng.randint(-7, 7),
+                                pts[-1][1] + rng.randint(6, 16)))
+                d.line(pts, fill=(6, 6, 7), width=2)
+            elif r < 0.30:          # 汚れ
                 d.rectangle([tx + 6, ty + 6, tx + tile - 8, ty + tile - 8],
-                            fill=tuple(int(x * 0.75) for x in c))
+                            fill=tuple(int(x * 0.7) for x in c))
     for t in range(0, W, tile):
         d.line([(t, 0), (t, H)], fill=groove, width=2)
         d.line([(0, t), (W, t)], fill=groove, width=2)
+    img = grunge(img, seed=seed + 5, strength=0.5, streaks=False)
     if wet_spots:
         ref = Image.new("RGB", size, (0, 0, 0))
         rd = ImageDraw.Draw(ref)
@@ -378,7 +516,7 @@ def wall_tex(size=(1024, 512), base=(13, 14, 20), seed=11, panel=128):
         d.line([(t, 0), (t, H)], fill=(5, 5, 8), width=3)
     for t in range(0, H, panel):
         d.line([(0, t), (W, t)], fill=(5, 5, 8), width=3)
-    return img
+    return grunge(img, seed=seed + 3, strength=0.65)
 
 
 def stripe_tex(c1=(255, 60, 150), c2=(12, 10, 14), size=(512, 64), n=8):
@@ -395,8 +533,9 @@ def stripe_tex(c1=(255, 60, 150), c2=(12, 10, 14), size=(512, 64), n=8):
 
 
 def poster_tex(lines, size=(512, 768), bg=(24, 22, 28), fg=(190, 185, 200),
-               accent=None, seed=5, title_scale=0.10):
-    """紙ポスター/掲示板テクスチャ。lines=[(text, scale, color), ...]"""
+               accent=None, seed=5, title_scale=0.10, aged=True):
+    """紙ポスター/掲示板テクスチャ。lines=[(text, scale, color), ...]
+    aged=True で黄ばみ・破れ・シミの経年劣化を加える。"""
     img = Image.new("RGB", size, bg)
     d = ImageDraw.Draw(img)
     W, H = size
@@ -409,6 +548,8 @@ def poster_tex(lines, size=(512, 768), bg=(24, 22, 28), fg=(190, 185, 200),
         d.text((x, y), text, font=f, fill=color)
         y += int(fs * 1.35)
     d.rectangle([4, 4, W - 5, H - 5], outline=tuple(int(v * 0.5) for v in fg))
+    if aged:
+        img = age_paper(img, seed=seed)
     return img
 
 
@@ -582,6 +723,53 @@ def fence_chainlink(scene, w, h, pos, rot=None, barbed=True):
             g.visual = TextureVisuals(material=fm)
             g.apply_transform(T(c[0], y + h / 2 + 0.11, c[2])
                               @ R(90, "y" if abs(axis[0]) > 0.5 else "x"))
+            scene.add_geometry(g)
+
+
+def decay_scatter(scene, x_range, z_range, seed=1, n_rubble=22, n_trash=12,
+                  n_stain=10, n_puddle=6, avoid=None):
+    """瓦礫・ゴミ・シミ・水たまりを床に散乱させる退廃演出。
+    avoid=[(x, z, r), ...] は避けるエリア(主要オブジェクト)。"""
+    rng = random.Random(seed)
+    M("stain", (0.045, 0.040, 0.036), rough=1.0)
+    M("puddle", (0.035, 0.045, 0.060), metallic=0.0, rough=0.06)
+
+    def pick():
+        for _ in range(20):
+            x = rng.uniform(*x_range)
+            z = rng.uniform(*z_range)
+            if not avoid or all((x - ax) ** 2 + (z - az) ** 2 > ar ** 2
+                                for (ax, az, ar) in avoid):
+                return x, z
+        return None
+
+    for _ in range(n_stain):        # 油染み・黒ずみ
+        p = pick()
+        if p:
+            disc(scene, rng.uniform(0.2, 0.75), (p[0], 0.004, p[1]),
+                 M("stain", (0,)), sections=18)
+    for _ in range(n_puddle):       # 水たまり(鏡面)
+        p = pick()
+        if p:
+            disc(scene, rng.uniform(0.25, 0.7), (p[0], 0.006, p[1]),
+                 M("puddle", (0,)), sections=18)
+    for _ in range(n_rubble):       # 瓦礫・剥がれたコンクリ片
+        p = pick()
+        if p:
+            s = rng.uniform(0.05, 0.22)
+            box(scene, (s, s * rng.uniform(0.3, 0.7), s * rng.uniform(0.6, 1.4)),
+                (p[0], s * 0.25, p[1]),
+                M("rubble", (0,)) if rng.random() < 0.7
+                else M("metal_rust", (0,)),
+                rot=R(rng.uniform(0, 360), "y") @ R(rng.uniform(-14, 14), "x"))
+    for _ in range(n_trash):        # 丸めた紙屑・ゴミ
+        p = pick()
+        if p:
+            g = trimesh.creation.icosphere(subdivisions=1,
+                                           radius=rng.uniform(0.04, 0.09))
+            g.apply_scale([1.0, rng.uniform(0.5, 0.8), 1.0])
+            g.visual = TextureVisuals(material=M("trash_paper", (0,)))
+            g.apply_transform(T(p[0], 0.04, p[1]))
             scene.add_geometry(g)
 
 

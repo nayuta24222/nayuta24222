@@ -32,7 +32,7 @@ const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -53,21 +53,68 @@ controls.target.set(
   parseFloat(params.get('tz') ?? 0));
 controls.update();
 
-// ライティング: 暗所+ネオン雰囲気
-scene.add(new THREE.AmbientLight(0x333a55, 1.1));
-const key = new THREE.DirectionalLight(0x8899cc, 1.2);
-key.position.set(6, 12, 8); scene.add(key);
-const pink = new THREE.PointLight(0xff2d88, 60, 18); pink.position.set(0, 4.5, -4.5); scene.add(pink);
-const pink2 = new THREE.PointLight(0xff2d88, 30, 12); pink2.position.set(2.5, 2, 1.5); scene.add(pink2);
-const blue = new THREE.PointLight(0x3d7dff, 40, 14); blue.position.set(-5, 3.5, 1); scene.add(blue);
-const red = new THREE.PointLight(0xff2020, 15, 8); red.position.set(5.5, 3, 2.5); scene.add(red);
+// ライティング: 退廃世界観 — 太陽光なし、くすんだ薄明かり+弱ったネオン
+scene.add(new THREE.AmbientLight(0x2a2e38, 0.9));
+const key = new THREE.DirectionalLight(0x55606e, 0.7);   // 曇天のこぼれ光
+key.position.set(4, 12, 6); scene.add(key);
+const pink = new THREE.PointLight(0xd62d78, 42, 17); pink.position.set(0, 4.5, -4.5); scene.add(pink);
+const pink2 = new THREE.PointLight(0xc02d70, 20, 11); pink2.position.set(2.5, 2, 1.5); scene.add(pink2);
+const blue = new THREE.PointLight(0x2f5dc0, 26, 13); blue.position.set(-5, 3.5, 1); scene.add(blue);
+const red = new THREE.PointLight(0xd02018, 12, 8); red.position.set(5.5, 3, 2.5); scene.add(red);
+const sodium = new THREE.PointLight(0xc08838, 10, 10); sodium.position.set(-3, 3, 3.5); scene.add(sodium);
 
+// 雨 (常に降り続ける)
+const RAIN_N = 900, rainGeo = new THREE.BufferGeometry();
+const rp = new Float32Array(RAIN_N * 6);
+function seedDrop(i){
+  const x = (Math.random()-0.5)*26, y = Math.random()*14, z = (Math.random()-0.5)*24;
+  rp[i*6]=x; rp[i*6+1]=y; rp[i*6+2]=z;
+  rp[i*6+3]=x+0.06; rp[i*6+4]=y-0.45; rp[i*6+5]=z;
+}
+for(let i=0;i<RAIN_N;i++) seedDrop(i);
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+const rain = new THREE.LineSegments(rainGeo,
+  new THREE.LineBasicMaterial({color:0x5a6a80, transparent:true, opacity:0.34}));
+scene.add(rain);
+
+// ネオンのちかちか: 発光マテリアルをランダム明滅させる
+const flickers = [];
 new GLTFLoader().load(model, (g)=>{
+  g.scene.traverse((o)=>{
+    if(o.material && o.material.emissive &&
+       (o.material.emissiveMap || o.material.emissive.getHex() !== 0)){
+      const name = o.material.name || '';
+      const isSign = /sign|neon|scanner|cross|led|mon_|crt|keypad|coals|lantern|tri/.test(name);
+      if(isSign && !flickers.some(f=>f.m===o.material)){
+        flickers.push({m:o.material, base:o.material.emissiveIntensity ?? 1,
+                       phase:Math.random()*100, speed:2+Math.random()*7,
+                       broken:Math.random()<0.3});
+      }
+    }
+  });
   scene.add(g.scene);
   window.__loaded = true;
 }, undefined, (e)=>{ document.getElementById('hud').textContent = 'ERR '+e; });
 
-renderer.setAnimationLoop(()=>{ controls.update(); renderer.render(scene, camera); });
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(()=>{
+  const t = clock.getElapsedTime();
+  // 雨を落とす
+  const a = rainGeo.attributes.position.array;
+  for(let i=0;i<RAIN_N;i++){
+    a[i*6+1]-=0.32; a[i*6+4]-=0.32;
+    if(a[i*6+1]<0) seedDrop(i);
+  }
+  rainGeo.attributes.position.needsUpdate = true;
+  // ネオン明滅 (壊れた看板は時々ふっと消える)
+  for(const f of flickers){
+    let v = f.base*(0.82+0.18*Math.sin(t*f.speed+f.phase)
+                    +0.08*Math.sin(t*f.speed*3.7+f.phase*2));
+    if(f.broken && Math.sin(t*1.3+f.phase)>0.93) v *= 0.08;
+    f.m.emissiveIntensity = Math.max(0.02, v);
+  }
+  controls.update(); renderer.render(scene, camera);
+});
 addEventListener('resize', ()=>{
   camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
